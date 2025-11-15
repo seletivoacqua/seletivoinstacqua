@@ -324,58 +324,98 @@ function getUserRole(params) {
 }
 
 function getAnalysts() {
+  Logger.log('👥 getAnalysts() chamada');
   const sheet = initUsuariosSheet();
   const data = sheet.getDataRange().getValues();
+
+  Logger.log(`📋 Headers USUARIOS: ${data[0].join(', ')}`);
+  Logger.log(`📊 Total de usuários: ${data.length - 1}`);
+
   const analysts = [];
 
   for (let i = 1; i < data.length; i++) {
+    const email = data[i][0];
+    const nome = data[i][1];
     const role = String(data[i][2]).toLowerCase().trim();
+    const id = data[i][3];
+
     if (role === 'analista') {
-      analysts.push({
-        id: data[i][3],
-        email: data[i][0],
-        name: data[i][1] || data[i][0],
+      const analyst = {
+        id: id || email,
+        email: email,
+        name: nome || email,
         role: 'analista',
         active: true
-      });
+      };
+      analysts.push(analyst);
+      Logger.log(`✅ Analista encontrado: ${analyst.name} (${analyst.email})`);
     }
   }
+
+  Logger.log(`📊 Total de analistas: ${analysts.length}`);
   return { analysts };
 }
 
 function getInterviewers() {
+  Logger.log('🎤 getInterviewers() chamada');
   const sheet = initUsuariosSheet();
   const data = sheet.getDataRange().getValues();
+
+  Logger.log(`📋 Headers USUARIOS: ${data[0].join(', ')}`);
+  Logger.log(`📊 Total de usuários: ${data.length - 1}`);
+
   const interviewers = [];
 
   for (let i = 1; i < data.length; i++) {
+    const email = data[i][0];
+    const nome = data[i][1];
     const role = String(data[i][2]).toLowerCase().trim();
+    const id = data[i][3];
+
     if (role === 'entrevistador') {
-      interviewers.push({
-        id: data[i][3],
-        email: data[i][0],
-        name: data[i][1] || data[i][0],
+      const interviewer = {
+        id: id || email,
+        email: email,
+        name: nome || email,
         role: 'entrevistador',
         active: true
-      });
+      };
+      interviewers.push(interviewer);
+      Logger.log(`✅ Entrevistador encontrado: ${interviewer.name} (${interviewer.email})`);
     }
   }
-  return interviewers;
+
+  Logger.log(`📊 Total de entrevistadores: ${interviewers.length}`);
+  return { interviewers };
 }
 
 // ============================================
 // CANDIDATOS
 // ============================================
 function getCandidates() {
+  Logger.log('📥 getCandidates() chamada');
   const { sheet, headers, values } = _readSheetBlock_(SHEET_CANDIDATOS);
-  if (!values.length) return { candidates: [] };
-  return {
-    candidates: values.map(row => {
-      const obj = {};
-      headers.forEach((h, j) => obj[h] = row[j]);
-      return obj;
-    })
-  };
+
+  Logger.log(`📋 Headers encontrados: ${headers.join(', ')}`);
+  Logger.log(`📊 Total de candidatos: ${values.length}`);
+
+  if (!values.length) {
+    Logger.log('⚠️ Nenhum candidato encontrado na planilha');
+    return { candidates: [] };
+  }
+
+  const candidates = values.map(row => {
+    const obj = {};
+    headers.forEach((h, j) => obj[h] = row[j]);
+    return obj;
+  });
+
+  Logger.log(`✅ Retornando ${candidates.length} candidatos`);
+  if (candidates.length > 0) {
+    Logger.log(`👤 Exemplo do primeiro candidato: ${JSON.stringify(candidates[0])}`);
+  }
+
+  return { candidates };
 }
 
 function updateCandidateStatus(params) {
@@ -808,22 +848,47 @@ function moveToInterview(params) {
 }
 
 function getInterviewerCandidates(params) {
+  Logger.log('🎤 getInterviewerCandidates() chamada');
+  Logger.log(`📧 Email do entrevistador: ${params.interviewerEmail}`);
+
   const { sheet, headers, values } = _readSheetBlock_(SHEET_CANDIDATOS);
-  if (!values.length) return [];
+
+  Logger.log(`📋 Headers: ${headers.join(', ')}`);
+  Logger.log(`📊 Total de candidatos na planilha: ${values.length}`);
+
+  if (!values.length) {
+    Logger.log('⚠️ Nenhum candidato na planilha');
+    return [];
+  }
+
   const col = _colMap_(headers);
-  const entrevistadorCol = col['entrevistador'] ?? col['entrevistador'];
-  if (entrevistadorCol === undefined) return [];
+  const entrevistadorCol = col['entrevistador'];
+
+  if (entrevistadorCol === undefined) {
+    Logger.log('❌ Coluna "Entrevistador" não encontrada!');
+    Logger.log(`📋 Colunas disponíveis: ${Object.keys(col).join(', ')}`);
+    return [];
+  }
+
+  Logger.log(`✅ Coluna "Entrevistador" encontrada no índice ${entrevistadorCol}`);
+
   const email = params.interviewerEmail?.toLowerCase().trim();
   const candidates = [];
+
   for (let i = 0; i < values.length; i++) {
-    const e = String(values[i][entrevistadorCol]).toLowerCase().trim();
+    const entrevistadorValue = values[i][entrevistadorCol];
+    const e = String(entrevistadorValue).toLowerCase().trim();
+
     if (e === email) {
       const obj = {};
       headers.forEach((h, j) => obj[h] = values[i][j]);
       obj.id = obj.CPF || obj.NUMEROINSCRICAO;
       candidates.push(obj);
+      Logger.log(`✅ Candidato encontrado: ${obj.NOMECOMPLETO || obj.CPF}`);
     }
   }
+
+  Logger.log(`📊 Total de candidatos do entrevistador: ${candidates.length}`);
   return candidates;
 }
 
