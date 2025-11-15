@@ -272,24 +272,44 @@ function getUserRole(params) {
 }
 
 function getAnalysts(params) {
-  const sheet = initUsuariosSheet();
-  const data = sheet.getDataRange().getValues();
-  const analysts = [];
+  try {
+    Logger.log('🔍 getAnalysts - Iniciando busca de analistas');
+    const sheet = initUsuariosSheet();
+    const data = sheet.getDataRange().getValues();
+    Logger.log('📊 Total de linhas na planilha USUARIOS: ' + data.length);
 
-  for (let i = 1; i < data.length; i++) {
-    const rawRole = data[i][2];
-    const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
-    if (normalizedRole === 'analista') {
-      analysts.push({
-        id: data[i][3] || data[i][0],
-        email: data[i][0],
-        name: data[i][1] || data[i][0],
-        role: normalizedRole,
-        active: true
-      });
+    const analysts = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const rawRole = data[i][2];
+      const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
+
+      Logger.log('👤 Linha ' + (i + 1) + ':');
+      Logger.log('   Email: ' + data[i][0]);
+      Logger.log('   Nome: ' + data[i][1]);
+      Logger.log('   Role (raw): "' + rawRole + '"');
+      Logger.log('   Role (normalized): "' + normalizedRole + '"');
+
+      if (normalizedRole === 'analista') {
+        const analyst = {
+          id: data[i][3] || data[i][0],
+          email: data[i][0],
+          name: data[i][1] || data[i][0],
+          role: normalizedRole,
+          active: true
+        };
+        analysts.push(analyst);
+        Logger.log('✅ Analista encontrado: ' + analyst.email);
+      }
     }
+
+    Logger.log('📋 Total de analistas encontrados: ' + analysts.length);
+    Logger.log('📦 Retornando: ' + JSON.stringify({ analysts: analysts }));
+    return { analysts: analysts };
+  } catch (error) {
+    Logger.log('❌ Erro em getAnalysts: ' + error.toString());
+    throw error;
   }
-  return { analysts: analysts };
 }
 
 // ============================================
