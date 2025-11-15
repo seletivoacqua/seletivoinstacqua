@@ -8,19 +8,16 @@ interface GoogleSheetsResponse {
 
 async function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
   try {
-    const payload = {
-      action,
-      ...params
-    };
+    // Construir URL com query parameters para evitar preflight CORS
+    const queryParams = new URLSearchParams({ action, ...params });
+    const url = `${SCRIPT_URL}?${queryParams.toString()}`;
 
-    const response = await fetch(SCRIPT_URL, {
-      method: 'POST',
+    const response = await fetch(url, {
+      method: 'GET',
       mode: 'cors',
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      }
     });
 
     if (!response.ok) {

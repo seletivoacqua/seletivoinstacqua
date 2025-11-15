@@ -20,22 +20,20 @@ class GoogleSheetsService {
         throw new Error('URL do Google Script não configurada. Verifique o arquivo .env');
       }
 
-      const payload = {
-        action,
-        ...data
-      };
+      // Construir URL com query parameters para evitar preflight CORS
+      const params = new URLSearchParams({ action, ...data });
+      const url = `${this.scriptUrl}?${params.toString()}`;
 
       console.log('🔄 [UserService] Chamando Google Apps Script:', action);
-      console.log('📦 [UserService] Payload:', payload);
+      console.log('📦 [UserService] URL:', url);
+      console.log('📦 [UserService] Data:', data);
 
-      const response = await fetch(this.scriptUrl, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method: 'GET',
         mode: 'cors',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        }
       });
 
       console.log('📡 [UserService] Resposta recebida - Status:', response.status);
