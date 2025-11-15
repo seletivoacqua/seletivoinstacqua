@@ -30,18 +30,36 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     try {
       setLoadingAnalysts(true);
       setError('');
-      console.log('📋 Carregando analistas...');
-      
+      console.log('========================================');
+      console.log('📋 [AssignmentPanel] Iniciando carregamento de analistas...');
+      console.log('========================================');
+
       const data = await getAnalysts();
-      console.log('✅ Analistas carregados:', data);
-      
+
+      console.log('========================================');
+      console.log('✅ [AssignmentPanel] Analistas recebidos:', data);
+      console.log('📊 [AssignmentPanel] Total de analistas:', data.length);
+      console.log('📊 [AssignmentPanel] Tipo de data:', typeof data);
+      console.log('📊 [AssignmentPanel] É array?', Array.isArray(data));
+
+      if (data.length > 0) {
+        console.log('👤 [AssignmentPanel] Primeiro analista:', data[0]);
+      }
+      console.log('========================================');
+
       setAnalysts(data);
-      
+
       if (data.length === 0) {
-        setError('Nenhum analista encontrado. Verifique se há analistas cadastrados no sistema.');
+        const msg = 'Nenhum analista encontrado. Verifique se há analistas cadastrados no sistema.';
+        console.warn('⚠️ [AssignmentPanel]', msg);
+        setError(msg);
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar analistas:', error);
+      console.error('========================================');
+      console.error('❌ [AssignmentPanel] Erro ao carregar analistas:', error);
+      console.error('❌ [AssignmentPanel] Tipo do erro:', typeof error);
+      console.error('❌ [AssignmentPanel] Mensagem:', error instanceof Error ? error.message : String(error));
+      console.error('========================================');
       setError('Erro ao carregar lista de analistas. Tente novamente.');
       setAnalysts([]);
     } finally {

@@ -1,120 +1,161 @@
-# 🚀 Guia Rápido - Correção de Erros
+# Guia Rápido - Correção do Problema de Analistas
 
-## ⚡ 3 Passos Rápidos
+## ✅ O Que Foi Feito
 
-### 1️⃣ NOVO SCRIPT (5 min)
+### 1. Logs Melhorados
+- **Google Apps Script:** Função `getAnalysts()` com logs completos
+- **Frontend:** `AssignmentPanel.tsx` com logs detalhados
+- **UserService:** Já tinha logs extensivos
 
-```
-1. Abrir Google Sheets
-2. Extensões > Apps Script
-3. DELETE TODO o código
-4. Copiar: google-apps-script-final-corrigido.js
-5. Colar e Salvar (Ctrl+S)
-6. Implantar > Nova implantação
-   - Tipo: Aplicativo da Web
-   - Executar como: Eu
-   - Acesso: Qualquer pessoa
-7. COPIAR URL
-```
+### 2. Ferramentas de Debug Criadas
+- `TESTE_ANALISTAS_APPS_SCRIPT.js` - Teste no Google Apps Script
+- `TESTE_ANALISTAS_FRONTEND.html` - Teste direto no navegador
+- `DEBUG_ANALISTAS.md` - Guia completo de debug
+- `SOLUCAO_PROBLEMA_ANALISTAS.md` - Soluções detalhadas
 
----
+## 🚀 Como Resolver AGORA
 
-### 2️⃣ ATUALIZAR .ENV (1 min)
+### Passo 1: Teste Rápido no Navegador
+1. Abra o arquivo `TESTE_ANALISTAS_FRONTEND.html` no navegador
+2. Cole a URL do seu Google Apps Script
+3. Clique em "Buscar Analistas"
+4. Veja o resultado detalhado
 
-```env
-VITE_GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/SUA_NOVA_URL/exec
-```
-
-**Substituir pela URL copiada!**
-
----
-
-### 3️⃣ BUILD E DEPLOY (2 min)
-
-```bash
-npm run build
-git add .
-git commit -m "fix: Corrigir CORS e envio de mensagens"
-git push
-```
-
-**Se usar Netlify:**
-- Atualizar variável `VITE_GOOGLE_SCRIPT_URL`
-- Redesenhar site (Clear cache)
-
----
-
-## ✅ Testar
-
-Abra no navegador:
-```
-https://script.google.com/macros/s/SUA_URL/exec?action=test
-```
-
-**Deve retornar:**
+**Resultado esperado:**
 ```json
-{"success":true,"data":{"status":"OK",...}}
+{
+  "success": true,
+  "data": {
+    "analysts": [
+      {
+        "id": "analista@email.com",
+        "email": "analista@email.com",
+        "name": "Nome do Analista",
+        "role": "analista",
+        "active": true
+      }
+    ]
+  }
+}
 ```
 
----
+### Passo 2: Verificar a Planilha
+Abra a planilha e vá para aba **USUARIOS**:
 
-## 🔧 Arquivos Importantes
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `google-apps-script-final-corrigido.js` | ✅ **USE ESTE!** Script corrigido |
-| `SOLUCAO_DEFINITIVA_ERROS.md` | Guia completo passo a passo |
-| `PASSO_A_PASSO_CONFIGURACAO.md` | Configuração do zero |
-
----
-
-## ❌ Problemas Resolvidos
-
-✅ **CORS bloqueado** → Headers CORS corrigidos
-✅ **Failed to fetch** → Nova implantação
-✅ **sendMessages not a function** → Função adicionada
-✅ **URL antiga** → Nova URL necessária
-
----
-
-## 🆘 Ainda com erro?
-
-### Erro de CORS?
+✅ **CORRETO:**
 ```
-Verifique: Implantação > Quem tem acesso: Qualquer pessoa
+| Email               | Nome      | Role     | ID                  |
+|---------------------|-----------|----------|---------------------|
+| analista@email.com  | Analista  | analista | analista@email.com  |
 ```
 
-### URL não funciona?
+❌ **INCORRETO:**
+- Role com "Analista" (maiúscula)
+- Role com "análista" (com acento)
+- Role com espaços extras
+- Aba USUARIOS não existe
+
+### Passo 3: Teste no Apps Script
+1. Abra o Editor do Google Apps Script
+2. Copie o código de `TESTE_ANALISTAS_APPS_SCRIPT.js`
+3. Execute a função `testGetAnalysts()`
+4. Verifique os logs em "Execuções"
+
+**Se não houver analistas:**
+Execute no Apps Script:
+```javascript
+resetUsuariosSheet()
 ```
-Teste direto: SUA_URL?action=test
-Se não retornar JSON → URL errada
+
+Isso criará a aba com usuários padrão.
+
+### Passo 4: Verificar no Sistema
+1. Faça login como admin
+2. Vá para aba "Alocação"
+3. Clique em "Recarregar Analistas"
+4. Abra o Console (F12)
+5. Veja os logs detalhados
+
+## 🔍 O Que Procurar nos Logs
+
+### Console do Navegador
+```
+========================================
+📋 [AssignmentPanel] Iniciando carregamento de analistas...
+========================================
+🔄 [UserService] Chamando Google Apps Script: getAnalysts
+📦 [UserService] Payload: {action: "getAnalysts"}
+📡 [UserService] Resposta recebida - Status: 200
+✅ [UserService] Dados recebidos: {...}
+📊 [AssignmentPanel] Total de analistas: 2
+✅ [AssignmentPanel] Analistas recebidos: [...]
+========================================
 ```
 
-### Build com erro?
-```bash
-npm install
-npm run build
+### Google Apps Script (Execuções)
+```
+🔍 getAnalysts - Iniciando busca de analistas
+📊 Total de linhas na planilha USUARIOS: 3
+👤 Linha 2:
+   Email: analista@email.com
+   Nome: Analista
+   Role (raw): "analista"
+   Role (normalized): "analista"
+✅ Analista encontrado: analista@email.com
+📋 Total de analistas encontrados: 1
 ```
 
----
+## 🎯 Solução Rápida
 
-## 📋 Checklist Mínimo
+**Se você só quer resolver rápido:**
 
-- [ ] Script novo colado
-- [ ] Nova implantação criada
-- [ ] URL copiada e colada no .env
-- [ ] Build executado
-- [ ] URL testada no navegador
-- [ ] Deploy feito
+1. Execute no Google Apps Script:
+```javascript
+function resetUsuariosSheet() {
+  const SPREADSHEET_ID = '1iQSQ06P_OXkqxaGWN3uG5jRYFBKyjWqQyvzuGk2EplY';
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName('USUARIOS');
+  if (sheet) ss.deleteSheet(sheet);
 
-**Tempo total: ~10 minutos**
+  sheet = ss.insertSheet('USUARIOS');
+  sheet.getRange('A1:D1').setValues([['Email', 'Nome', 'Role', 'ID']]);
+  sheet.getRange('A2:D3').setValues([
+    ['admin@email.com', 'Admin', 'admin', 'admin@email.com'],
+    ['analista@email.com', 'Analista', 'analista', 'analista@email.com']
+  ]);
+}
+```
 
----
+2. Execute a função acima
+3. Recarregue o sistema
+4. Vá para "Alocação" e clique em "Recarregar Analistas"
 
-## 🎯 Status
+## 📝 Checklist Final
 
-✅ Build: **Sucesso** (6.71s)
-✅ Código: **Corrigido**
-✅ Documentação: **Completa**
+- [ ] Executei `testGetAnalysts()` no Apps Script?
+- [ ] Os logs mostram analistas encontrados?
+- [ ] A aba USUARIOS existe e tem dados?
+- [ ] A coluna Role tem "analista" corretamente?
+- [ ] Testei no navegador com `TESTE_ANALISTAS_FRONTEND.html`?
+- [ ] O Console mostra os analistas sendo carregados?
+- [ ] Os analistas aparecem no dropdown de alocação?
 
-**Pronto para usar!**
+## ❓ Ainda Não Funciona?
+
+Se após todos esses passos ainda não funcionar:
+
+1. **Copie os logs do Console do navegador**
+2. **Copie os logs do Google Apps Script**
+3. **Tire um screenshot da aba USUARIOS**
+4. **Compartilhe essas informações**
+
+Os logs irão revelar exatamente qual é o problema.
+
+## 🎉 Quando Funcionar
+
+Você verá:
+- Analistas listados no dropdown de alocação
+- Número correto de analistas na seção "Carga de Trabalho"
+- Possibilidade de alocar candidatos para analistas
+
+Pronto! Sistema funcionando.
