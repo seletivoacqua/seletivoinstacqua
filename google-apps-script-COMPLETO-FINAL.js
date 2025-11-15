@@ -263,17 +263,37 @@ function initUsuariosSheet() {
     sheet.getRange(2, 1, defaultUsers.length, 7).setValues(defaultUsers);
     sheet.getRange('A1:G1').setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
   } else {
+    // CORREÇÃO CRÍTICA: Verificar e adicionar coluna ID na posição correta
     const headers = _getHeaders_(sheet);
-    if (headers.indexOf('ID') === -1) {
-      const lastCol = sheet.getLastColumn();
-      sheet.getRange(1, lastCol + 1).setValue('ID');
+    const idIndex = headers.indexOf('ID');
+
+    if (idIndex === -1) {
+      Logger.log('⚠️ Coluna ID não encontrada na planilha USUARIOS');
+      Logger.log('📋 Estrutura atual:', headers.join(', '));
+
+      // Inserir coluna ID após Role (posição D)
+      sheet.insertColumnAfter(3); // Insere coluna após C (Role)
+      sheet.getRange(1, 4).setValue('ID').setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+
+      // Preencher IDs existentes com emails
       const data = sheet.getDataRange().getValues();
       for (let i = 1; i < data.length; i++) {
-        if (!data[i][headers.indexOf('ID')]) {
-          sheet.getRange(i + 1, headers.indexOf('ID') + 1).setValue(data[i][0]);
+        const email = data[i][0]; // Coluna A
+        if (email) {
+          sheet.getRange(i + 1, 4).setValue(email); // Coluna D
         }
       }
+
+      Logger.log('✅ Coluna ID adicionada na posição D');
+      Logger.log('✅ IDs preenchidos com emails');
     }
+
+    // Log da estrutura final
+    const finalHeaders = _getHeaders_(sheet);
+    Logger.log('📋 Estrutura final da planilha USUARIOS:');
+    finalHeaders.forEach((h, i) => {
+      Logger.log(`  [${String.fromCharCode(65 + i)}] ${h}`);
+    });
   }
   return sheet;
 }
