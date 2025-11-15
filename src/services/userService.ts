@@ -84,18 +84,27 @@ export async function getUsers(): Promise<User[]> {
 
 export async function getAnalysts(): Promise<User[]> {
   try {
-    console.log('🔍 Buscando analistas...');
+    console.log('========================================');
+    console.log('🔍 [getAnalysts] Iniciando busca de analistas...');
+    console.log('========================================');
+
     const result = await sheetsService.fetchData('getAnalysts');
-    console.log('📥 Resultado completo de getAnalysts:', JSON.stringify(result, null, 2));
+
+    console.log('📥 [getAnalysts] Resultado completo:', JSON.stringify(result, null, 2));
+    console.log('🔍 [getAnalysts] Tipo do resultado:', typeof result);
+    console.log('🔍 [getAnalysts] É objeto?', typeof result === 'object');
+    console.log('🔍 [getAnalysts] result.success:', result?.success);
+    console.log('🔍 [getAnalysts] result.data existe?', result?.data !== undefined);
+    console.log('🔍 [getAnalysts] Tipo de result.data:', typeof result?.data);
 
     // Verificar se houve erro na requisição
     if (!result) {
-      console.error('❌ Resultado vazio ou null');
+      console.error('❌ [getAnalysts] Resultado vazio ou null');
       return [];
     }
 
     if (result.success === false) {
-      console.error('❌ Erro retornado do servidor:', result.error);
+      console.error('❌ [getAnalysts] Erro retornado do servidor:', result.error);
       return [];
     }
 
