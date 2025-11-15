@@ -170,6 +170,7 @@ function handleRequest(e) {
       'getReportStats': () => getReportStats(params),
       'getReport': () => getReport(params),
       'getEmailAliases': () => getEmailAliases(),
+      'saveScreening': () => saveScreening(params),
       'test': () => testConnection()
     };
 
@@ -1021,6 +1022,9 @@ function addStatusColumnIfNotExists() {
     'TELEFONE',
     'EMAIL_SENT',
     'SMS_SENT',
+    'capacidade_tecnica',
+    'experiencia',
+    'pontuacao_triagem',
     'status_entrevista',
     'entrevistador',
     'data_entrevista',
@@ -1590,6 +1594,98 @@ function getReport(params) {
     return candidates;
   } catch (error) {
     Logger.log('❌ Erro em getReport: ' + error.toString());
+    throw error;
+  }
+}
+
+// ============================================
+// FUNÇÃO DE TRIAGEM
+// ============================================
+
+function saveScreening(params) {
+  try {
+    Logger.log('📝 Salvando triagem do candidato');
+    Logger.log('   - Candidato ID: ' + params.candidateId);
+    Logger.log('   - Status: ' + params.status);
+
+    const sh = _sheet(SHEET_CANDIDATOS);
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+
+    const cpfCol = col['CPF'];
+    const statusCol = col['Status'];
+    const analistaCol = col['Analista'];
+    const dataTriagemCol = col['Data Triagem'];
+    const observacoesCol = col['Observações'];
+    const capacidadeTecnicaCol = col['capacidade_tecnica'];
+    const experienciaCol = col['experiencia'];
+    const pontuacaoTriagemCol = col['pontuacao_triagem'];
+
+    const idx = _getIndex_(sh, headers);
+    const searchKey = String(params.candidateId || params.registrationNumber || params.CPF).trim();
+    let row = idx[searchKey];
+
+    if (!row) {
+      const newIdx = _buildIndex_(sh, headers);
+      const rev = _getRev_();
+      CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
+      row = newIdx[searchKey];
+    }
+
+    if (!row) {
+      Logger.log('❌ Candidato não encontrado: ' + searchKey);
+      throw new Error('Candidato não encontrado: ' + searchKey);
+    }
+
+    Logger.log('📍 Atualizando candidato na linha: ' + row);
+
+    const lastCol = sh.getLastColumn();
+    const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
+
+    if (statusCol >= 0) {
+      rowVals[statusCol] = params.status === 'classificado' ? 'Classificado' : 'Desclassificado';
+    }
+
+    if (analistaCol >= 0 && params.analystEmail) {
+      rowVals[analistaCol] = params.analystEmail;
+    }
+
+    if (dataTriagemCol >= 0) {
+      rowVals[dataTriagemCol] = params.screenedAt || getCurrentTimestamp();
+    }
+
+    if (observacoesCol >= 0 && params.notes) {
+      rowVals[observacoesCol] = params.notes;
+    }
+
+    if (capacidadeTecnicaCol >= 0 && params.capacidade_tecnica !== undefined) {
+      rowVals[capacidadeTecnicaCol] = params.capacidade_tecnica;
+    }
+
+    if (experienciaCol >= 0 && params.experiencia !== undefined) {
+      rowVals[experienciaCol] = params.experiencia;
+    }
+
+    if (pontuacaoTriagemCol >= 0 && params.total_score !== undefined) {
+      rowVals[pontuacaoTriagemCol] = params.total_score;
+    }
+
+    _writeWholeRow_(sh, row, rowVals);
+    _bumpRev_();
+
+    Logger.log('✅ Triagem salva com sucesso');
+    Logger.log('   - Status: ' + (params.status === 'classificado' ? 'Classificado' : 'Desclassificado'));
+    Logger.log('   - Pontuação: ' + (params.total_score || 0));
+
+    return {
+      success: true,
+      message: 'Triagem salva com sucesso',
+      candidateId: searchKey,
+      status: params.status
+    };
+  } catch (error) {
+    Logger.log('❌ Erro em saveScreening: ' + error.toString());
+    Logger.log('   Stack: ' + error.stack);
     throw error;
   }
 }

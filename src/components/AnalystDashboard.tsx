@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { candidateService, Candidate } from '../services/candidateService';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye, ClipboardCheck } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
-import DisqualificationModal from './DisqualificationModal';
+import ScreeningModal from './ScreeningModal';
 
 interface AnalystDashboardProps {
   onCandidateTriaged?: () => void;
@@ -16,7 +16,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showDisqualificationModal, setShowDisqualificationModal] = useState(false);
+  const [showScreeningModal, setShowScreeningModal] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
@@ -70,28 +70,8 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     }
   }
 
-  async function handleClassify() {
-    if (!selectedCandidate || !user) return;
-
+  async function handleScreeningComplete() {
     try {
-      console.log('✅ Classificando candidato:', selectedCandidate.registration_number);
-
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const result = await googleSheetsService.updateCandidateStatus(
-        selectedCandidate.registration_number,
-        'Classificado',
-        {
-          analystEmail: user.email
-        }
-      );
-
-      console.log('📝 Resposta da classificação:', result);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao classificar');
-      }
-
-      // Recarregar dados para atualizar a interface
       await loadCandidates();
       await loadStats();
 
@@ -99,51 +79,9 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
         onCandidateTriaged();
       }
 
-      alert('Candidato classificado com sucesso!');
       moveToNext();
     } catch (error) {
-      console.error('Erro ao classificar candidato:', error);
-      alert('Erro ao classificar candidato: ' + error.message);
-    }
-  }
-
-  async function handleDisqualify(reasonId: string, notes: string) {
-    if (!selectedCandidate || !user) return;
-
-    try {
-      console.log('❌ Desclassificando candidato:', selectedCandidate.registration_number);
-      console.log('🔍 Motivo selecionado (ID):', reasonId);
-      console.log('🔍 Observações:', notes);
-
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const result = await googleSheetsService.updateCandidateStatus(
-        selectedCandidate.registration_number,
-        'Desclassificado',
-        {
-          reasonId,
-          notes,
-          analystEmail: user.email
-        }
-      );
-
-      console.log('📝 Resposta da desclassificação:', result);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao desclassificar');
-      }
-
-      await loadCandidates();
-      await loadStats();
-
-      if (onCandidateTriaged) {
-        onCandidateTriaged();
-      }
-
-      alert('Candidato desclassificado com sucesso!');
-      moveToNext();
-    } catch (error) {
-      console.error('Erro ao desclassificar candidato:', error);
-      alert('Erro ao desclassificar candidato: ' + error.message);
+      console.error('Erro ao recarregar dados após triagem:', error);
     }
   }
 
@@ -340,20 +278,12 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
                   <div className="flex gap-2">
                     <button
-                      onClick={handleClassify}
+                      onClick={() => setShowScreeningModal(true)}
                       disabled={!selectedCandidate}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      Classificar
-                    </button>
-                    <button
-                      onClick={() => setShowDisqualificationModal(true)}
-                      disabled={!selectedCandidate}
-                      className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Desclassificar
+                      <ClipboardCheck className="w-4 h-4" />
+                      Iniciar Triagem
                     </button>
                     <button
                       onClick={handleReview}
@@ -367,12 +297,14 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
                 </div>
               </div>
 
-              <DisqualificationModal
-                isOpen={showDisqualificationModal}
-                onClose={() => setShowDisqualificationModal(false)}
-                onConfirm={handleDisqualify}
-                candidateName={selectedCandidate?.NOMECOMPLETO || selectedCandidate?.full_name || ''}
-              />
+              {selectedCandidate && (
+                <ScreeningModal
+                  isOpen={showScreeningModal}
+                  onClose={() => setShowScreeningModal(false)}
+                  candidate={selectedCandidate}
+                  onScreeningComplete={handleScreeningComplete}
+                />
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
