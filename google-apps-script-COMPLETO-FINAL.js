@@ -632,13 +632,17 @@ function sendMessages(params) {
   if (!sheet) throw new Error('Planilha não encontrada');
   const col = _colMap_(headers);
   const cpfCol = col['CPF'] ?? col['cpf'];
+  const regNumCol = col['NUMEROINSCRICAO'] ?? col['numerodeinscricao'];
   const targetIds = (params.candidateIds || '').split(',').map(s => s.trim()).filter(Boolean);
   const results = [];
   let successCount = 0, failCount = 0;
 
   for (let i = 0; i < values.length; i++) {
-    const cpf = String(values[i][cpfCol]).trim();
-    if (!targetIds.includes(cpf)) continue;
+    const cpf = String(values[i][cpfCol] || '').trim();
+    const regNum = String(values[i][regNumCol] || '').trim();
+    const candidateId = cpf || regNum;
+
+    if (!targetIds.includes(candidateId) && !targetIds.includes(cpf) && !targetIds.includes(regNum)) continue;
 
     const candidate = {};
     headers.forEach((h, j) => candidate[h] = values[i][j]);
@@ -648,37 +652,37 @@ function sendMessages(params) {
     if (params.messageType === 'email') {
       recipient = _pickEmailFromRow_(headers, values[i]);
       if (!recipient) {
-        results.push({ candidateId: cpf, candidateName: nome, success: false, error: 'Email não cadastrado' });
+        results.push({ candidateId: candidateId, candidateName: nome, success: false, error: 'Email não cadastrado' });
         failCount++; continue;
       }
       const subj = _applyTemplate_(params.subject, candidate);
       const body = _applyTemplate_(params.content, candidate);
-      result = _sendEmailGmail_(recipient, subj, body);
-      logMessage({ registrationNumber: cpf, messageType: 'email', recipient, subject: subj, content: body, sentBy: params.sentBy, status: result.ok ? 'enviado' : 'falhou' });
+      result = _sendEmailGmail_(recipient, subj, body, params.fromAlias);
+      logMessage({ registrationNumber: candidateId, messageType: 'email', recipient, subject: subj, content: body, sentBy: params.sentBy, status: result.ok ? 'enviado' : 'falhou' });
     } else if (params.messageType === 'sms') {
       recipient = _pickPhoneFromRow_(headers, values[i]);
       if (!recipient) {
-        results.push({ candidateId: cpf, candidateName: nome, success: false, error: 'Telefone não cadastrado' });
+        results.push({ candidateId: candidateId, candidateName: nome, success: false, error: 'Telefone não cadastrado' });
         failCount++; continue;
       }
       const body = _applyTemplate_(params.content, candidate);
       result = _sendSmsTwilio_(recipient, body);
       if (result.skipped) {
-        results.push({ candidateId: cpf, candidateName: nome, success: false, error: 'Twilio não configurado' });
+        results.push({ candidateId: candidateId, candidateName: nome, success: false, error: 'Twilio não configurado' });
         failCount++; continue;
       }
-      logMessage({ registrationNumber: cpf, messageType: 'sms', recipient, subject: '', content: body, sentBy: params.sentBy, status: result.ok ? 'enviado' : 'falhou' });
+      logMessage({ registrationNumber: candidateId, messageType: 'sms', recipient, subject: '', content: body, sentBy: params.sentBy, status: result.ok ? 'enviado' : 'falhou' });
     } else {
       throw new Error('Tipo inválido');
     }
 
     if (result.ok) {
       successCount++;
-      _updateMessageStatusInCandidates_(cpf, params.messageType);
-      results.push({ candidateId: cpf, candidateName: nome, success: true });
+      _updateMessageStatusInCandidates_(candidateId, params.messageType);
+      results.push({ candidateId: candidateId, candidateName: nome, success: true });
     } else {
       failCount++;
-      results.push({ candidateId: cpf, candidateName: nome, success: false, error: result.error || 'Erro' });
+      results.push({ candidateId: candidateId, candidateName: nome, success: false, error: result.error || 'Erro' });
     }
   }
   return { successCount, failCount, results };
@@ -688,23 +692,35 @@ function updateMessageStatus(params) {
   const sh = _sheet(SHEET_CANDIDATOS);
   const headers = _getHeaders_(sh);
   const col = _colMap_(headers);
-  const cpfCol = col['CPF'] ?? col['cpf'];
   const targetCol = params.messageType === 'email' ? (col['EMAIL_SENT'] ?? col['emailsent']) : (col['SMS_SENT'] ?? col['smssent']);
   if (targetCol === undefined) throw new Error('Coluna não encontrada');
 
   const idx = _getIndex_(sh, headers);
-  const key = String(params.registrationNumber).trim();
-  let row = idx[key];
-  if (!row) {
-    const newIdx = _buildIndex_(sh, headers);
-    const rev = _getRev_();
-    CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
-    row = newIdx[key];
+
+  // Aceita tanto registrationNumber (string) quanto registrationNumbers (array ou string separado por vírgulas)
+  const keys = params.registrationNumbers
+    ? (Array.isArray(params.registrationNumbers)
+        ? params.registrationNumbers
+        : String(params.registrationNumbers).split(',').map(s => s.trim()).filter(Boolean))
+    : [String(params.registrationNumber || '').trim()];
+
+  let updated = 0;
+  for (const key of keys) {
+    let row = idx[key];
+    if (!row) {
+      const newIdx = _buildIndex_(sh, headers);
+      const rev = _getRev_();
+      CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
+      row = newIdx[key];
+    }
+    if (row) {
+      sh.getRange(row, targetCol + 1).setValue('Sim');
+      updated++;
+    }
   }
-  if (!row) throw new Error('Candidato não encontrado');
-  sh.getRange(row, targetCol + 1).setValue('Sim');
+
   _bumpRev_();
-  return { success: true };
+  return { success: true, updated };
 }
 
 // ============================================
@@ -857,7 +873,9 @@ function saveInterviewEvaluation(params) {
   const headers = _getHeaders_(sh);
   const col = _colMap_(headers);
   const idx = _getIndex_(sh, headers);
-  const key = String(params.candidateId).trim();
+
+  // Aceita tanto candidateId quanto registrationNumber
+  const key = String(params.candidateId || params.registrationNumber || '').trim();
   let row = idx[key];
   if (!row) {
     const newIdx = _buildIndex_(sh, headers);
@@ -882,8 +900,8 @@ function saveInterviewEvaluation(params) {
     'entrevistador_at': new Date().toISOString(),
     'interview_completed_at': params.completed_at || new Date().toISOString(),
     'interview_score': totalScore,
-    'interview_result': params.resultado,
-    'interview_notes': params.impressao_perfil,
+    'interview_result': params.interview_result || params.resultado,
+    'interview_notes': params.interview_notes || params.impressao_perfil,
     'formacao_adequada': params.formacao_adequada,
     'graduacoes_competencias': params.graduacoes_competencias,
     'descricao_processos': params.descricao_processos,
@@ -905,7 +923,7 @@ function saveInterviewEvaluation(params) {
 
   _writeWholeRow_(sh, row, rowVals);
   _bumpRev_();
-  return { success: true, score: totalScore, resultado: params.resultado };
+  return { success: true, score: totalScore, resultado: fields.interview_result };
 }
 
 // ============================================
@@ -979,7 +997,11 @@ function addStatusColumnIfNotExists() {
     'interview_score','interview_result','interview_notes','interview_completed_at',
     'formacao_adequada','graduacoes_competencias','descricao_processos','terminologia_tecnica',
     'calma_clareza','escalas_flexiveis','adaptabilidade_mudancas','ajustes_emergencia',
-    'residencia','resolucao_conflitos','colaboracao_equipe','adaptacao_perfis'
+    'residencia','resolucao_conflitos','colaboracao_equipe','adaptacao_perfis',
+    'assigned_to','assigned_at','assigned_by','DataCadastro','updated_at','Telefone','Email',
+    'documento_1','documento_2','documento_3','documento_4','documento_5',
+    'capacidade_tecnica','conforme','nao_conforme','nao_se_aplica','experiencia','total_score',
+    'analystEmail','notes','screenedAt'
   ];
   let added = false;
   required.forEach(col => {
