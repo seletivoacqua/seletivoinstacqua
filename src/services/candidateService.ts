@@ -121,7 +121,9 @@ class GoogleSheetsService {
         status: (candidate.Status || candidate.status || 'pendente').toLowerCase(),
         Status: candidate.Status || candidate.status || 'pendente',
 
-        assigned_to: candidate.assigned_to || null,
+        // CORREÇÃO: Mapear assigned_to e Analista corretamente
+        assigned_to: candidate.assigned_to || candidate.Analista || null,
+        Analista: candidate.Analista || candidate.assigned_to || null,
         assigned_at: candidate.assigned_at || null,
         assigned_by: candidate.assigned_by || null,
 
@@ -195,12 +197,34 @@ export const candidateService = {
     userId?: string
   ): Promise<PaginatedResponse<Candidate>> {
     try {
+      console.log('📊 [CandidateService] Buscando candidatos...');
+      console.log('📊 [CandidateService] UserId:', userId);
+      console.log('📊 [CandidateService] Filters:', filters);
+
       const allData = await sheetsService.getCandidates();
+      console.log('📦 [CandidateService] Total de candidatos carregados:', allData.length);
+
+      if (allData.length > 0) {
+        console.log('👤 [CandidateService] Exemplo de candidato:', allData[0]);
+      }
 
       let filteredData = filterData(allData, filters);
+      console.log('🔍 [CandidateService] Após filtros gerais:', filteredData.length);
 
+      // CORREÇÃO: Verificar assigned_to considerando email e ID
       if (userId && filters?.assignedTo === undefined) {
-        filteredData = filteredData.filter(item => item.assigned_to === userId);
+        console.log('🔍 [CandidateService] Filtrando por userId:', userId);
+        filteredData = filteredData.filter(item => {
+          const match = item.assigned_to === userId ||
+                        item.assigned_to === userId.toLowerCase() ||
+                        item.Analista === userId ||
+                        item.Analista === userId.toLowerCase();
+          if (match) {
+            console.log('✅ [CandidateService] Candidato encontrado:', item.NOMECOMPLETO, 'assigned_to:', item.assigned_to);
+          }
+          return match;
+        });
+        console.log('✅ [CandidateService] Após filtrar por userId:', filteredData.length);
       }
 
       filteredData.sort((a, b) => {
@@ -213,6 +237,9 @@ export const candidateService = {
       const to = from + pageSize;
       const paginatedData = filteredData.slice(from, to);
 
+      console.log('📄 [CandidateService] Página:', page, 'de', Math.ceil(filteredData.length / pageSize));
+      console.log('📄 [CandidateService] Retornando:', paginatedData.length, 'candidatos');
+
       return {
         data: paginatedData,
         count: filteredData.length,
@@ -221,7 +248,7 @@ export const candidateService = {
         totalPages: Math.ceil(filteredData.length / pageSize),
       };
     } catch (error) {
-      console.error('Erro ao buscar candidatos:', error);
+      console.error('❌ [CandidateService] Erro ao buscar candidatos:', error);
       throw error;
     }
   },

@@ -288,10 +288,13 @@ function getUserRole(params) {
   for (let i = 1; i < data.length; i++) {
     const email = data[i][0]?.toLowerCase().trim();
     if (email === emailToFind) {
+      // CORREÇÃO: Normaliza o role para lowercase para garantir compatibilidade
+      const rawRole = String(data[i][2]).toLowerCase().trim();
+
       return {
         email: data[i][0],
         name: data[i][1] || data[i][0],
-        role: String(data[i][2]).toLowerCase().trim(),
+        role: rawRole, // Retorna sempre em lowercase
         id: data[i][3] || data[i][0],
         active: true
       };
