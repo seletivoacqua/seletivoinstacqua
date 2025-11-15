@@ -177,9 +177,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
 
-      console.log('🔐 LOGIN - Email:', email);
+      console.log('═'.repeat(60));
+      console.log('🔐 INICIANDO LOGIN');
+      console.log('═'.repeat(60));
+      console.log('📧 Email:', email);
+
       const userData = await sheetsService.getUserByEmail(email.toLowerCase().trim());
-      console.log('👤 LOGIN - Dados recebidos:', JSON.stringify(userData, null, 2));
+      console.log('📥 Dados brutos do Google Sheets:', JSON.stringify(userData, null, 2));
 
       if (!userData) {
         throw new Error('Usuário não encontrado');
@@ -189,25 +193,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Usuário inativo');
       }
 
+      // CRÍTICO: Garantir que o role está limpo e em lowercase
+      const cleanRole = String(userData.role).toLowerCase().trim();
+
       const userWithoutPassword: User = {
         id: userData.email,
         email: userData.email,
         name: userData.name,
-        role: userData.role,
+        role: cleanRole as 'admin' | 'analista' | 'entrevistador',
         active: userData.active
       };
 
-      console.log('💾 LOGIN - Salvando user:', JSON.stringify(userWithoutPassword, null, 2));
-      console.log('🎭 LOGIN - ROLE a ser salvo:', userWithoutPassword.role);
-      console.log('🔍 LOGIN - role === "admin":', userWithoutPassword.role === 'admin');
-      console.log('🔍 LOGIN - role === "analista":', userWithoutPassword.role === 'analista');
-	  console.log('🔍 LOGIN - role === "entrevistador":', userWithoutPassword.role === 'entrevistador');
+      console.log('═'.repeat(60));
+      console.log('✅ USUÁRIO PROCESSADO');
+      console.log('═'.repeat(60));
+      console.log('User completo:', JSON.stringify(userWithoutPassword, null, 2));
+      console.log('🎭 Role FINAL:', `"${userWithoutPassword.role}"`);
+      console.log('📏 Tamanho:', userWithoutPassword.role.length);
+      console.log('🔤 Tipo:', typeof userWithoutPassword.role);
+      console.log('🔢 Bytes:', Array.from(userWithoutPassword.role).map(c => c.charCodeAt(0)).join(', '));
+      console.log('');
+      console.log('🧪 TESTES:');
+      console.log('  role === "admin":', userWithoutPassword.role === 'admin');
+      console.log('  role === "analista":', userWithoutPassword.role === 'analista');
+      console.log('  role === "entrevistador":', userWithoutPassword.role === 'entrevistador');
+      console.log('═'.repeat(60));
 
       setUser(userWithoutPassword);
       localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
 
+      console.log('💾 Salvo no localStorage');
+      console.log('═'.repeat(60));
+
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('❌ Erro no login:', error);
       throw error;
     } finally {
       setLoading(false);
