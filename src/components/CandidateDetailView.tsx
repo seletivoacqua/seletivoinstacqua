@@ -56,11 +56,13 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
       
       // Documentos
       CURRICULOVITAE: 'CURRÍCULO VITAE',
-      DOCUMENTOSPESSOAIS: 'DOCUMENTOS PESSOAIS',
-      DOCUMENTOSPROFISSIONAIS: 'DOCUMENTOS PROFISSIONAIS',
+      COPIARG: 'RG',
+      COPIACPF: 'CPF',
+      CNH: 'CNH',
       DIPLOMACERTIFICADO: 'DIPLOMA/CERTIFICADO',
       DOCUMENTOSCONSELHO: 'DOCUMENTOS DO CONSELHO',
-      ESPECIALIZACOESCURSOS: 'ESPECIALIZAÇÕES E CURSOS',
+      EXPERIENCIAPROFISSIONAL: 'EXPERIÊNCIA PROFISSIONAL',
+    
       
       // Campos de sistema
       Status: 'STATUS',
@@ -103,11 +105,11 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
 
   const documentosFields = createOrderedFields([
     'CURRICULOVITAE',
-    'DOCUMENTOSPESSOAIS',
-    'DOCUMENTOSPROFISSIONAIS',
+    'COPIARG',
+    'COPIACPF',
     'DIPLOMACERTIFICADO',
     'DOCUMENTOSCONSELHO',
-    'ESPECIALIZACOESCURSOS'
+    'EXPERIENCIAPROFISSIONAL'
   ]);
 
   const systemFields = createOrderedFields([
