@@ -172,6 +172,52 @@ export async function getAnalysts(): Promise<User[]> {
   }
 }
 
+
+// userService.ts - APENAS ADICIONE ESTA FUNÇÃO
+export async function getInterviewers(): Promise<User[]> {
+  try {
+    console.log('🎤 [getInterviewers] Buscando entrevistadores...');
+
+    const result = await sheetsService.fetchData('getInterviewers');
+
+    if (!result) {
+      console.error('❌ [getInterviewers] Resultado vazio');
+      return getMockInterviewers();
+    }
+
+    // Sua função retorna array direto, então usamos result diretamente
+    const interviewers = Array.isArray(result) ? result : [];
+
+    console.log('✅ Entrevistadores encontrados:', interviewers.length);
+
+    return interviewers.map((interviewer: any) => ({
+      id: interviewer.id || interviewer.email,
+      email: interviewer.email,
+      name: interviewer.name || 'Entrevistador',
+      role: 'entrevistador',
+      active: true
+    }));
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar entrevistadores:', error);
+    return getMockInterviewers();
+  }
+}
+
+// Fallback simples
+function getMockInterviewers(): User[] {
+  return [
+    {
+      id: 'entrevistador1@empresa.com',
+      name: 'Entrevistador 1',
+      email: 'entrevistador1@empresa.com',
+      role: 'entrevistador',
+      active: true
+    }
+  ];
+}
+
+
 export async function createUser(user: Omit<User, 'id' | 'active'>): Promise<User> {
   try {
     return await sheetsService.fetchData('createUser', user);
