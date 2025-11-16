@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck } from 'lucide-react';
+import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import type { Candidate } from '../types/candidate';
+import { getAnalysts, getInterviewers } from '../services/userService';
+import { User } from '../contexts/AuthContext';
 
 interface ReportsPageProps {
   onClose: () => void;
@@ -8,17 +10,10 @@ interface ReportsPageProps {
 
 type ReportType = 'classificados' | 'desclassificados' | 'entrevista_classificados' | 'entrevista_desclassificados';
 
-interface Analyst {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
 export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [loading, setLoading] = useState(false);
-  const [analysts, setAnalysts] = useState<Analyst[]>([]);
-  const [interviewers, setInterviewers] = useState<Analyst[]>([]);
+  const [analysts, setAnalysts] = useState<User[]>([]);
+  const [interviewers, setInterviewers] = useState<User[]>([]);
   const [selectedAnalyst, setSelectedAnalyst] = useState<string>('todos');
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('todos');
   const [reportType, setReportType] = useState<ReportType>('classificados');
@@ -29,50 +24,60 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     entrevistaClassificados: 0,
     entrevistaDesclassificados: 0
   });
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    console.log('🔄 ReportsPage - Iniciando carregamento');
     loadAnalystsAndInterviewers();
     loadStats();
   }, []);
 
   useEffect(() => {
-    if (reportType) {
+    if (analysts.length > 0 || interviewers.length > 0) {
       loadReport();
     }
-  }, [reportType, selectedAnalyst, selectedInterviewer]);
+  }, [reportType, selectedAnalyst, selectedInterviewer, analysts, interviewers]);
 
   async function loadAnalystsAndInterviewers() {
     try {
-      // Usando o serviço existente que já temos
-      const { getAnalysts } = await import('../services/userService');
-      const allUsers = await getAnalysts();
-      
-      // Filtrar analistas (role = 'analyst')
-      const analystsList = allUsers.filter(user => 
-        user.role === 'analyst' || user.role === 'Analista'
-      );
-      
-      // Filtrar entrevistadores (role = 'interviewer' ou qualquer usuário ativo para entrevista)
-      const interviewersList = allUsers.filter(user => 
-        user.role === 'interviewer' || user.role === 'Entrevistador' || user.active
-      );
+      setLoadingUsers(true);
+      setError('');
+      console.log('========================================');
+      console.log('📋 [ReportsPage] Iniciando carregamento de analistas e entrevistadores...');
+      console.log('========================================');
 
-      setAnalysts(analystsList);
-      setInterviewers(interviewersList);
-      
-      console.log('📊 Analistas carregados:', analystsList);
-      console.log('🎤 Entrevistadores carregados:', interviewersList);
+      const [analystsData, interviewersData] = await Promise.all([
+        getAnalysts(),
+        getInterviewers()
+      ]);
+
+      console.log('========================================');
+      console.log('✅ [ReportsPage] Analistas recebidos:', analystsData);
+      console.log('✅ [ReportsPage] Entrevistadores recebidos:', interviewersData);
+      console.log('📊 [ReportsPage] Total de analistas:', analystsData.length);
+      console.log('📊 [ReportsPage] Total de entrevistadores:', interviewersData.length);
+      console.log('========================================');
+
+      setAnalysts(analystsData);
+      setInterviewers(interviewersData);
+
+      if (analystsData.length === 0 && interviewersData.length === 0) {
+        const msg = 'Nenhum analista ou entrevistador encontrado. Verifique se há usuários cadastrados no sistema.';
+        console.warn('⚠️ [ReportsPage]', msg);
+        setError(msg);
+      }
     } catch (error) {
-      console.error('Erro ao carregar analistas e entrevistadores:', error);
-      // Fallback para dados mock em caso de erro
-      setAnalysts([
-        { id: '1', name: 'Analista 1', email: 'analista1@email.com', role: 'analyst' },
-        { id: '2', name: 'Analista 2', email: 'analista2@email.com', role: 'analyst' }
-      ]);
-      setInterviewers([
-        { id: '3', name: 'Entrevistador 1', email: 'entrevistador1@email.com', role: 'interviewer' },
-        { id: '4', name: 'Entrevistador 2', email: 'entrevistador2@email.com', role: 'interviewer' }
-      ]);
+      console.error('========================================');
+      console.error('❌ [ReportsPage] Erro ao carregar usuários:', error);
+      console.error('❌ [ReportsPage] Tipo do erro:', typeof error);
+      console.error('❌ [ReportsPage] Mensagem:', error instanceof Error ? error.message : String(error));
+      console.error('========================================');
+      setError('Erro ao carregar lista de analistas e entrevistadores. Tente novamente.');
+      setAnalysts([]);
+      setInterviewers([]);
+    } finally {
+      setLoadingUsers(false);
     }
   }
 
@@ -92,25 +97,42 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   async function loadReport() {
     try {
       setLoading(true);
+      console.log('📋 [ReportsPage] Carregando relatório:', reportType);
+      
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      const filters: any = {};
+      let analystEmail = undefined;
+      let interviewerEmail = undefined;
+
       if (selectedAnalyst !== 'todos') {
-        filters.analystId = selectedAnalyst;
-      }
-      if (selectedInterviewer !== 'todos') {
-        filters.interviewerId = selectedInterviewer;
+        const analyst = analysts.find(a => a.id === selectedAnalyst);
+        analystEmail = analyst?.email;
+        console.log('🔍 [ReportsPage] Filtrando por analista:', analystEmail);
       }
 
-      const result = await googleSheetsService.getReport(reportType, filters);
+      if (selectedInterviewer !== 'todos') {
+        const interviewer = interviewers.find(i => i.id === selectedInterviewer);
+        interviewerEmail = interviewer?.email;
+        console.log('🔍 [ReportsPage] Filtrando por entrevistador:', interviewerEmail);
+      }
+
+      const result = await googleSheetsService.getReport({
+        reportType,
+        analystEmail,
+        interviewerEmail
+      });
+
+      console.log('📦 [ReportsPage] Resultado do relatório:', result);
 
       if (result.success && Array.isArray(result.data)) {
         setReportData(result.data);
+        console.log('✅ [ReportsPage] Relatório carregado:', result.data.length, 'registros');
       } else {
+        console.warn('⚠️ [ReportsPage] Nenhum dado retornado ou estrutura inválida');
         setReportData([]);
       }
     } catch (error) {
-      console.error('Erro ao carregar relatório:', error);
+      console.error('❌ [ReportsPage] Erro ao carregar relatório:', error);
       setReportData([]);
     } finally {
       setLoading(false);
@@ -123,57 +145,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       return;
     }
 
-    let headers: string[] = [];
-    let rows: string[][] = [];
-
-    switch (reportType) {
-      case 'classificados':
-      case 'entrevista_classificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'PCD', 'Analista', 'Entrevistador'];
-        rows = reportData.map(c => [
-          c.NOMECOMPLETO || '',
-          c.NOMESOCIAL || '',
-          c.CPF || '',
-          c.TELEFONE || '',
-          c.CARGOPRETENDIDO || '',
-          c.VAGAPCD || '',
-          c.assigned_analyst_name || '',
-          c.interviewer_name || ''
-        ]);
-        break;
-
-      case 'desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Motivo Desclassificação', 'PCD', 'Analista'];
-        rows = reportData.map(c => [
-          c.NOMECOMPLETO || '',
-          c.NOMESOCIAL || '',
-          c.CPF || '',
-          c.TELEFONE || '',
-          c.CARGOPRETENDIDO || '',
-          c['Motivo Desclassificação'] || '',
-          c.VAGAPCD || '',
-          c.assigned_analyst_name || ''
-        ]);
-        break;
-
-      case 'entrevista_desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Pontuação', 'PCD', 'Entrevistador'];
-        rows = reportData.map(c => [
-          c.NOMECOMPLETO || '',
-          c.NOMESOCIAL || '',
-          c.CPF || '',
-          c.TELEFONE || '',
-          c.CARGOPRETENDIDO || '',
-          c.interview_score?.toString() || '',
-          c.VAGAPCD || '',
-          c.interviewer_name || ''
-        ]);
-        break;
-    }
+    const headers = getTableHeaders();
+    const rows = reportData.map(candidate => getTableRowData(candidate));
 
     const csv = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -195,10 +172,25 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       return;
     }
 
-    // Para uma implementação real, você pode usar bibliotecas como:
-    // xlsx ou exceljs para gerar arquivos Excel nativos
-    // Por enquanto, vamos usar CSV com extensão .xls como fallback
-    exportToCSV(); // Reutiliza a função CSV temporariamente
+    const headers = getTableHeaders();
+    const rows = reportData.map(candidate => getTableRowData(candidate));
+
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    link.style.visibility = 'hidden';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function exportToPDF() {
@@ -207,9 +199,6 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       return;
     }
 
-    // Para uma implementação real, você pode usar bibliotecas como:
-    // jspdf, pdfmake, ou html2canvas + jspdf
-    // Esta é uma implementação básica que abre uma nova janela para impressão
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       const title = getReportTitle();
@@ -227,6 +216,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
             th { background-color: #f5f5f5; font-weight: bold; }
             tr:nth-child(even) { background-color: #f9f9f9; }
             .header-info { margin-bottom: 20px; color: #666; }
+            @media print { body { margin: 0; } }
           </style>
         </head>
         <body>
@@ -243,6 +233,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       `);
       
       printWindow.document.close();
+      printWindow.focus();
       printWindow.print();
     }
   }
@@ -276,7 +267,6 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       case 'desclassificados':
         return [...baseHeaders, 'Motivo Desclassificação', 'PCD', 'Analista'];
       case 'entrevista_classificados':
-        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
       case 'entrevista_desclassificados':
         return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
       default:
@@ -319,18 +309,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function getReportTitle(): string {
-    switch (reportType) {
-      case 'classificados':
-        return 'Candidatos Classificados - Triagem';
-      case 'desclassificados':
-        return 'Candidatos Desclassificados - Triagem';
-      case 'entrevista_classificados':
-        return 'Candidatos Classificados - Entrevista';
-      case 'entrevista_desclassificados':
-        return 'Candidatos Desclassificados - Entrevista';
-      default:
-        return 'Relatório';
-    }
+    const titles = {
+      classificados: 'Candidatos Classificados - Triagem',
+      desclassificados: 'Candidatos Desclassificados - Triagem',
+      entrevista_classificados: 'Candidatos Classificados - Entrevista',
+      entrevista_desclassificados: 'Candidatos Desclassificados - Entrevista'
+    };
+    return titles[reportType] || 'Relatório';
   }
 
   function shouldShowAnalystFilter(): boolean {
@@ -341,57 +326,96 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     return reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados';
   }
 
+  async function reloadUsers() {
+    await loadAnalystsAndInterviewers();
+  }
+
+  function clearFilters() {
+    setSelectedAnalyst('todos');
+    setSelectedInterviewer('todos');
+  }
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="bg-white border-b px-6 py-4">
+    <div className="flex flex-col h-full bg-white">
+      <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Relatórios</h2>
-            <p className="text-sm text-gray-600 mt-1">Visualize e exporte relatórios do processo seletivo</p>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <FileText className="w-6 h-6 text-blue-600" />
+              Relatórios
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Visualize e exporte relatórios do processo seletivo
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
-          >
-            Fechar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={reloadUsers}
+              disabled={loadingUsers}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`} />
+              Recarregar Usuários
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="bg-blue-50 rounded-lg p-4">
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+            <button
+              onClick={() => setError('')}
+              className="text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-blue-800">Classificados</div>
+                <div className="text-sm text-blue-800 font-medium">Classificados</div>
                 <div className="text-2xl font-bold text-blue-800">{stats.classificados}</div>
               </div>
               <Users className="w-8 h-8 text-blue-600" />
             </div>
           </div>
 
-          <div className="bg-red-50 rounded-lg p-4">
+          <div className="bg-red-50 rounded-lg p-4 border border-red-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-red-800">Desclassificados</div>
+                <div className="text-sm text-red-800 font-medium">Desclassificados</div>
                 <div className="text-2xl font-bold text-red-800">{stats.desclassificados}</div>
               </div>
               <UserX className="w-8 h-8 text-red-600" />
             </div>
           </div>
 
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="bg-green-50 rounded-lg p-4 border border-green-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-green-800">Aprovados Entrevista</div>
+                <div className="text-sm text-green-800 font-medium">Aprovados Entrevista</div>
                 <div className="text-2xl font-bold text-green-800">{stats.entrevistaClassificados}</div>
               </div>
               <ClipboardCheck className="w-8 h-8 text-green-600" />
             </div>
           </div>
 
-          <div className="bg-orange-50 rounded-lg p-4">
+          <div className="bg-orange-50 rounded-lg p-4 border border-orange-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-orange-800">Reprovados Entrevista</div>
+                <div className="text-sm text-orange-800 font-medium">Reprovados Entrevista</div>
                 <div className="text-2xl font-bold text-orange-800">{stats.entrevistaDesclassificados}</div>
               </div>
               <UserX className="w-8 h-8 text-orange-600" />
@@ -400,20 +424,20 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         </div>
       </div>
 
-      <div className="bg-gray-50 border-b px-6 py-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-white border-b px-6 py-4 shadow-sm">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-600" />
             <span className="text-sm font-medium text-gray-700">Filtros:</span>
           </div>
 
-          <div className="flex-1 flex items-center gap-4">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Tipo de Relatório</label>
+          <div className="flex-1 flex items-center gap-4 flex-wrap">
+            <div className="min-w-[200px]">
+              <label className="block text-xs text-gray-600 mb-1 font-medium">Tipo de Relatório</label>
               <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value as ReportType)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="classificados">Classificados - Triagem</option>
                 <option value="desclassificados">Desclassificados - Triagem</option>
@@ -423,46 +447,73 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
             </div>
 
             {shouldShowAnalystFilter() && (
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Analista</label>
-                <select
-                  value={selectedAnalyst}
-                  onChange={(e) => setSelectedAnalyst(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="todos">Todos os Analistas</option>
-                  {analysts.map((analyst) => (
-                    <option key={analyst.id} value={analyst.id}>
-                      {analyst.name}
+              <div className="min-w-[180px]">
+                <label className="block text-xs text-gray-600 mb-1 font-medium">Analista</label>
+                {loadingUsers ? (
+                  <div className="flex items-center py-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Carregando...
+                  </div>
+                ) : (
+                  <select
+                    value={selectedAnalyst}
+                    onChange={(e) => setSelectedAnalyst(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    disabled={analysts.length === 0}
+                  >
+                    <option value="todos">
+                      {analysts.length === 0 ? 'Nenhum analista disponível' : 'Todos os Analistas'}
                     </option>
-                  ))}
-                </select>
+                    {analysts.map((analyst) => (
+                      <option key={analyst.id} value={analyst.id}>
+                        {analyst.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
 
             {shouldShowInterviewerFilter() && (
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Entrevistador</label>
-                <select
-                  value={selectedInterviewer}
-                  onChange={(e) => setSelectedInterviewer(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="todos">Todos os Entrevistadores</option>
-                  {interviewers.map((interviewer) => (
-                    <option key={interviewer.id} value={interviewer.id}>
-                      {interviewer.name}
+              <div className="min-w-[180px]">
+                <label className="block text-xs text-gray-600 mb-1 font-medium">Entrevistador</label>
+                {loadingUsers ? (
+                  <div className="flex items-center py-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Carregando...
+                  </div>
+                ) : (
+                  <select
+                    value={selectedInterviewer}
+                    onChange={(e) => setSelectedInterviewer(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    disabled={interviewers.length === 0}
+                  >
+                    <option value="todos">
+                      {interviewers.length === 0 ? 'Nenhum entrevistador disponível' : 'Todos os Entrevistadores'}
                     </option>
-                  ))}
-                </select>
+                    {interviewers.map((interviewer) => (
+                      <option key={interviewer.id} value={interviewer.id}>
+                        {interviewer.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
 
-            <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={clearFilters}
+              className="px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg text-sm transition-colors self-end"
+            >
+              Limpar Filtros
+            </button>
+
+            <div className="ml-auto flex items-center gap-2 self-end">
               <button
                 onClick={exportToPDF}
                 disabled={reportData.length === 0}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium transition-colors"
               >
                 <Download className="w-4 h-4" />
                 PDF
@@ -470,7 +521,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               <button
                 onClick={exportToExcel}
                 disabled={reportData.length === 0}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Excel
@@ -478,7 +529,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               <button
                 onClick={exportToCSV}
                 disabled={reportData.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium transition-colors"
               >
                 <Download className="w-4 h-4" />
                 CSV
