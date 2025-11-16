@@ -127,6 +127,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       if (result.success && Array.isArray(result.data)) {
         setReportData(result.data);
         console.log('✅ [ReportsPage] Relatório carregado:', result.data.length, 'registros');
+        
+        // Debug: mostrar estrutura dos dados
+        if (result.data.length > 0) {
+          console.log('🔍 Primeiro registro:', result.data[0]);
+          console.log('📋 Campos disponíveis:', Object.keys(result.data[0]));
+        }
       } else {
         console.warn('⚠️ [ReportsPage] Nenhum dado retornado ou estrutura inválida');
         setReportData([]);
@@ -137,6 +143,53 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Funções auxiliares baseadas no DisqualifiedCandidatesList
+  function getNomeCompleto(candidate: Candidate): string {
+    return candidate.NOMECOMPLETO || 
+           candidate.nome_completo || 
+           candidate.full_name || 
+           'Nome não informado';
+  }
+
+  function getCargo(candidate: Candidate): string {
+    return candidate.CARGOPRETENDIDO || 
+           candidate.cargo_administrativo || 
+           candidate.cargo_assistencial || 
+           'Não informado';
+  }
+
+  function getAreaAtuacao(candidate: Candidate): string {
+    return candidate.AREAATUACAO || 
+           candidate.area_atuacao_pretendida || 
+           candidate.desired_area || 
+           'Área não informada';
+  }
+
+  function getMotivoDesclassificacao(candidate: Candidate): string {
+    return candidate.disqualification_reason?.reason || 
+           candidate.motivo_desclassificacao || 
+           'Motivo não informado';
+  }
+
+  function getAnalistaTriagem(candidate: Candidate): string {
+    return candidate.assigned_to || 
+           candidate.analista_triagem || 
+           candidate.assigned_analyst_name ||
+           'Analista não informado';
+  }
+
+  function getEntrevistador(candidate: Candidate): string {
+    return candidate.interviewer_name ||
+           candidate.entrevistador || 
+           'Entrevistador não informado';
+  }
+
+  function getObservacoes(candidate: Candidate): string {
+    return candidate.observacoes_triagem || 
+           candidate.screening_notes || 
+           '';
   }
 
   function exportToCSV() {
@@ -276,20 +329,20 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
   function getTableRowData(candidate: Candidate): string[] {
     const baseData = [
-      candidate.NOMECOMPLETO || 'Não informado',
-      candidate.NOMESOCIAL || '-',
-      candidate.CPF || 'Não informado',
-      candidate.TELEFONE || 'Não informado',
-      candidate.CARGOPRETENDIDO || 'Não informado'
+      getNomeCompleto(candidate),
+      candidate.NOMESOCIAL || candidate.nome_social || '-',
+      candidate.CPF || candidate.cpf || candidate.cpf_numero || 'Não informado',
+      candidate.TELEFONE || candidate.telefone || 'Não informado',
+      getCargo(candidate)
     ];
 
     switch (reportType) {
       case 'desclassificados':
         return [
           ...baseData,
-          candidate['Motivo Desclassificação'] || 'Não informado',
+          getMotivoDesclassificacao(candidate),
           candidate.VAGAPCD || 'Não',
-          candidate.assigned_analyst_name || ''
+          getAnalistaTriagem(candidate)
         ];
       case 'entrevista_classificados':
       case 'entrevista_desclassificados':
@@ -297,13 +350,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           ...baseData,
           candidate.interview_score?.toString() || '0',
           candidate.VAGAPCD || 'Não',
-          candidate.interviewer_name || ''
+          getEntrevistador(candidate)
         ];
       default:
         return [
           ...baseData,
           candidate.VAGAPCD || 'Não',
-          candidate.assigned_analyst_name || ''
+          getAnalistaTriagem(candidate)
         ];
     }
   }
@@ -608,23 +661,23 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                   {reportData.map((candidate, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                        {candidate.NOMECOMPLETO || 'Não informado'}
+                        {getNomeCompleto(candidate)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {candidate.NOMESOCIAL || '-'}
+                        {candidate.NOMESOCIAL || candidate.nome_social || '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 font-mono">
-                        {candidate.CPF || 'Não informado'}
+                        {candidate.CPF || candidate.cpf || candidate.cpf_numero || 'Não informado'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {candidate.TELEFONE || 'Não informado'}
+                        {candidate.TELEFONE || candidate.telefone || 'Não informado'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {candidate.CARGOPRETENDIDO || 'Não informado'}
+                        {getCargo(candidate)}
                       </td>
                       {reportType === 'desclassificados' && (
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {candidate['Motivo Desclassificação'] || 'Não informado'}
+                          {getMotivoDesclassificacao(candidate)}
                         </td>
                       )}
                       {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
@@ -651,12 +704,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                       </td>
                       {shouldShowAnalystFilter() && (
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {candidate.assigned_analyst_name || '-'}
+                          {getAnalistaTriagem(candidate)}
                         </td>
                       )}
                       {shouldShowInterviewerFilter() && (
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {candidate.interviewer_name || '-'}
+                          {getEntrevistador(candidate)}
                         </td>
                       )}
                     </tr>
