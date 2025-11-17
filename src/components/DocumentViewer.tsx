@@ -1,5 +1,34 @@
+import { useState, useEffect } from 'react'; // ✅ Importação corrigida
+import { Candidate } from '../types/candidate';
+import { processMultipleUrls } from '../services/jotformService';
+import {
+  FileText,
+  GraduationCap,
+  CreditCard,
+  Award,
+  FolderOpen,
+  ExternalLink,
+  AlertCircle,
+  User,
+  Stethoscope,
+  Briefcase
+} from 'lucide-react';
+
+interface DocumentViewerProps {
+  candidate: Candidate;
+  onFocusDocument?: (docKey: string) => void;
+}
+
+interface Document {
+  key: string;
+  label: string;
+  url?: string;
+  icon: React.ReactNode;
+  isPrimary?: boolean;
+}
+
 export default function DocumentViewer({ candidate, onFocusDocument }: DocumentViewerProps) {
-  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null); // ✅ Agora funciona
 
   // MAPEAMENTO CORRETO baseado no primeiro código
   const documents: Document[] = [
@@ -12,14 +41,14 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
     },
     { 
       key: 'copia_rg', 
-      label: 'Cópia RG', 
+      label: 'Cópia do RG', 
       url: candidate.COPIARG,
       icon: <CreditCard className="w-5 h-5" />, 
       isPrimary: true 
     },
     { 
       key: 'copia_cpf', 
-      label: 'Cópia CPF', 
+      label: 'Cópia do CPF', 
       url: candidate.COPIACPF,
       icon: <CreditCard className="w-5 h-5" />, 
       isPrimary: true 
@@ -39,7 +68,7 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
     },
     { 
       key: 'documentos_conselho', 
-      label: 'Conselho/Comprovante', 
+      label: 'Documentos do Conselho', 
       url: candidate.DOCUMENTOSCONSELHO,
       icon: <Award className="w-5 h-5" />,
       isPrimary: candidate.AREAATUACAO === 'Assistencial' 
