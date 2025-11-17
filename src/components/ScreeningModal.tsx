@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Check, FileText, User, Car, Briefcase, Award, Stethoscope } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { X, Check, FileText, User, Car, Briefcase, Award, Stethoscope, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Candidate {
@@ -26,6 +26,7 @@ interface DocumentCheck {
   value: 'conforme' | 'nao_conforme' | 'nao_se_aplica';
   required: boolean;
   icon: React.ReactNode;
+  conditionallyRequired?: boolean;
 }
 
 export default function ScreeningModal({
@@ -37,9 +38,51 @@ export default function ScreeningModal({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [disqualificationReason, setDisqualificationReason] = useState('');
-  
-  // Documentos baseados nas colunas especificadas
-  const [documents, setDocuments] = useState<DocumentCheck[]>([
+
+  // 🎯 LISTA EXATA DOS CARGOS QUE EXIGEM REGULARIDADE PROFISSIONAL
+  const cargosComRegularidadeObrigatoria = useMemo(() => [
+    'Assistente Social (30h)',
+    'Biomédico (36h)',
+    'Enfermeiro (a) Especialista - Auditor (36h)',
+    'Enfermeiro (a) Especialista - Centro Cirúrgico (36h)',
+    'Enfermeiro (a) Especialista - CME (36h)',
+    'Enfermeiro (a) Especialista - Epidemiologia (36h)',
+    'Enfermeiro (a) Especialista - Hemodinâmica (36h)',
+    'Enfermeiro (a) Especialista - NEP (36h)',
+    'Enfermeiro (a) Especialista - Núcleo de Qualidade e Segurança do Paciente (36h)',
+    'Enfermeiro (a) Especialista - SCHI (36h)',
+    'Enfermeiro (a) Especialista - UTI Cirúrgica (36h)',
+    'Enfermeiro (a) Especialista - UTI Geral (36h)',
+    'Enfermeiro (a) Especialista - UTI Pediátrica (36h)',
+    'Enfermeiro (a) Generalista (30h)',
+    'Farmacêutico (36h)',
+    'Fisioterapeuta Especialista (30h)',
+    'Fisioterapeuta Generalista (30h)',
+    'Fonoaudiólogo (30h)',
+    'Nutricionista (30h)',
+    'Psicólogo (30h)',
+    'Tecnico em Enfermagem (36h)',
+    'Técnico em Laboratório (36h)'
+  ], []);
+
+  // 🎯 LISTA EXATA DOS CARGOS QUE EXIGEM CNH
+  const cargosComCNHObrigatoria = useMemo(() => [
+  'Motorista - Categoria D (44h)',
+   
+  ], []);
+
+  // 🎯 VERIFICAÇÃO SIMPLES E EXATA
+  const cargoRequirements = useMemo(() => {
+    const currentCargo = candidate.CARGOPRETENDIDO || '';
+
+    return {
+      requiresCNH: cargosComCNHObrigatoria.includes(currentCargo),
+      requiresRegularidade: cargosComRegularidadeObrigatoria.includes(currentCargo)
+    };
+  }, [candidate.CARGOPRETENDIDO, cargosComCNHObrigatoria, cargosComRegularidadeObrigatoria]);
+
+  // 🎯 DOCUMENTOS COM CONDIÇÕES DINÂMICAS BASEADAS NOS CARGOS
+  const initialDocuments: DocumentCheck[] = useMemo(() => [
     { 
       name: 'RG e CPF', 
       key: 'checkrg-cpf',
@@ -51,7 +94,8 @@ export default function ScreeningModal({
       name: 'CNH', 
       key: 'check-cnh',
       value: 'nao_se_aplica', 
-      required: false,
+      required: cargoRequirements.requiresCNH,
+      conditionallyRequired: cargoRequirements.requiresCNH,
       icon: <Car className="w-4 h-4" />
     },
     { 
@@ -65,7 +109,8 @@ export default function ScreeningModal({
       name: 'Regularidade Profissional', 
       key: 'check-regularidade',
       value: 'nao_se_aplica', 
-      required: false,
+      required: cargoRequirements.requiresRegularidade,
+      conditionallyRequired: cargoRequirements.requiresRegularidade,
       icon: <Award className="w-4 h-4" />
     },
     { 
@@ -82,10 +127,16 @@ export default function ScreeningModal({
       required: true,
       icon: <FileText className="w-4 h-4" />
     }
-  ]);
+  ], [cargoRequirements, candidate.VAGAPCD]);
 
+  const [documents, setDocuments] = useState<DocumentCheck[]>(initialDocuments);
   const [classification, setClassification] = useState<'classificado' | 'desclassificado' | null>(null);
   const [notes, setNotes] = useState('');
+
+  // 🎯 ATUALIZAR DOCUMENTOS QUANDO OS REQUISITOS MUDAREM
+  useEffect(() => {
+    setDocuments(initialDocuments);
+  }, [initialDocuments]);
 
   if (!isOpen) return null;
 
@@ -96,27 +147,53 @@ export default function ScreeningModal({
     setDocuments(newDocuments);
   };
 
-  // Verificar documentos obrigatórios não conformes
+  // 🎯 VERIFICAÇÕES SIMPLIFICADAS DE CLASSIFICAÇÃO
   const hasRequiredNonConformDocuments = () => {
     return documents.some(doc => doc.required && doc.value === 'nao_conforme');
   };
 
-  // Verificar se todos os documentos obrigatórios foram avaliados
   const allRequiredDocumentsEvaluated = () => {
     return documents
       .filter(doc => doc.required)
       .every(doc => doc.value !== 'nao_se_aplica');
   };
 
-  // Classificar candidato
-  const handleClassify = async () => {
+  const getProblematicDocuments = () => {
+    return documents.filter(doc => 
+      doc.required && doc.value === 'nao_conforme'
+    );
+  };
+
+  // 🎯 VALIDAÇÃO SIMPLES PARA CLASSIFICAÇÃO
+  const canClassify = () => {
     if (!allRequiredDocumentsEvaluated()) {
-      alert('Avalie todos os documentos obrigatórios antes de classificar.');
-      return;
+      const missingDocs = documents.filter(doc => 
+        doc.required && doc.value === 'nao_se_aplica'
+      ).map(doc => doc.name);
+      
+      return { 
+        canClassify: false, 
+        reason: `Avalie todos os documentos obrigatórios antes de classificar: ${missingDocs.join(', ')}` 
+      };
     }
     
     if (hasRequiredNonConformDocuments()) {
-      alert('Não é possível classificar candidato com documentos obrigatórios não conformes.');
+      const problematicDocs = getProblematicDocuments();
+      return { 
+        canClassify: false, 
+        reason: `Não é possível classificar candidato com documentos obrigatórios não conformes: ${problematicDocs.map(d => d.name).join(', ')}` 
+      };
+    }
+
+    return { canClassify: true, reason: '' };
+  };
+
+  // 🎯 CLASSIFICAR CANDIDATO
+  const handleClassify = async () => {
+    const validation = canClassify();
+    
+    if (!validation.canClassify) {
+      alert(validation.reason);
       return;
     }
     
@@ -124,7 +201,7 @@ export default function ScreeningModal({
     await submitScreening();
   };
 
-  // Desclassificar candidato
+  // 🎯 DESCLASSIFICAR CANDIDATO
   const handleDisqualify = async () => {
     if (!disqualificationReason.trim() && !hasRequiredNonConformDocuments()) {
       alert('Informe o motivo da desclassificação.');
@@ -135,20 +212,20 @@ export default function ScreeningModal({
     await submitScreening();
   };
 
-  // Enviar a triagem
+  // 🎯 ENVIAR TRIAGEM
   const submitScreening = async () => {
     try {
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      // Preparar dados para salvar com os nomes de coluna especificados
+      const statusForScript = classification === 'classificado' ? 'Classificado' : 'Desclassificado';
+
       const screeningData = {
         candidateId: candidate.id,
         registrationNumber: candidate.registration_number,
         CPF: candidate.CPF,
-        status: classification,
+        status: statusForScript,
         
-        // Mapeamento direto para as colunas da planilha
         'checkrg-cpf': documents.find(d => d.key === 'checkrg-cpf')?.value,
         'check-cnh': documents.find(d => d.key === 'check-cnh')?.value,
         'check-experiencia': documents.find(d => d.key === 'check-experiencia')?.value,
@@ -156,21 +233,22 @@ export default function ScreeningModal({
         'check-laudo': documents.find(d => d.key === 'check-laudo')?.value,
         'check-curriculo': documents.find(d => d.key === 'check-curriculo')?.value,
         
-        // Informações de desclassificação
         ...(classification === 'desclassificado' && {
-          disqualification_reason: disqualificationReason || 'Documentos obrigatórios não conformes',
+          disqualification_reason: disqualificationReason || getDisqualificationReason(),
           documentos_nao_conformes: documents
             .filter(doc => doc.value === 'nao_conforme')
             .map(doc => doc.name)
             .join(', ')
         }),
         
-        notes,
+        notes: formatNotes(),
         analystEmail: user?.email,
         screenedAt: new Date().toISOString()
       };
 
-      console.log('📊 Dados da triagem a serem salvos:', screeningData);
+      console.log('📊 Dados da triagem:', screeningData);
+      console.log('🎯 Status:', statusForScript);
+      console.log('📝 Requisitos do cargo:', cargoRequirements);
 
       const result = await googleSheetsService.saveScreening(screeningData);
 
@@ -190,52 +268,49 @@ export default function ScreeningModal({
     }
   };
 
-  // Fechar modal
+  // 🎯 FUNÇÕES AUXILIARES
+  const getDisqualificationReason = (): string => {
+    const problematicDocs = getProblematicDocuments();
+    if (problematicDocs.length > 0) {
+      return `Documentos obrigatórios não conformes: ${problematicDocs.map(d => d.name).join(', ')}`;
+    }
+    return disqualificationReason || 'Desclassificado por documento obrigatório não conforme';
+  };
+
+  const formatNotes = (): string => {
+    const parts = [];
+    
+    const documentResults = documents.map(doc => 
+      `${doc.name}: ${formatDocumentValue(doc.value)}${doc.conditionallyRequired ? ' (Obrigatório para este cargo)' : ''}`
+    ).join(' | ');
+    
+    parts.push(`VERIFICAÇÃO DOCUMENTAL: ${documentResults}`);
+    
+    if (classification === 'desclassificado' && disqualificationReason) {
+      parts.push(`MOTIVO DESCLASSIFICAÇÃO: ${disqualificationReason}`);
+    }
+    
+    if (notes.trim()) {
+      parts.push(`OBSERVAÇÕES: ${notes}`);
+    }
+
+    parts.push(`CARGO: ${candidate.CARGOPRETENDIDO} | CNH OBRIGATÓRIA: ${cargoRequirements.requiresCNH ? 'Sim' : 'Não'} | REGULARIDADE OBRIGATÓRIA: ${cargoRequirements.requiresRegularidade ? 'Sim' : 'Não'}`);
+    
+    return parts.join('\n');
+  };
+
+  const formatDocumentValue = (value: string): string => {
+    switch (value) {
+      case 'conforme': return 'CONFORME';
+      case 'nao_conforme': return 'NÃO CONFORME';
+      case 'nao_se_aplica': return 'NÃO SE APLICA';
+      default: return value;
+    }
+  };
+
+  // 🎯 FECHAR MODAL
   const handleClose = () => {
-    setDocuments([
-      { 
-        name: 'RG e CPF', 
-        key: 'checkrg-cpf',
-        value: 'nao_se_aplica', 
-        required: true,
-        icon: <User className="w-4 h-4" />
-      },
-      { 
-        name: 'CNH', 
-        key: 'check-cnh',
-        value: 'nao_se_aplica', 
-        required: false,
-        icon: <Car className="w-4 h-4" />
-      },
-      { 
-        name: 'Comprovação de Experiência Profissional', 
-        key: 'check-experiencia',
-        value: 'nao_se_aplica', 
-        required: true,
-        icon: <Briefcase className="w-4 h-4" />
-      },
-      { 
-        name: 'Regularidade Profissional', 
-        key: 'check-regularidade',
-        value: 'nao_se_aplica', 
-        required: true,
-        icon: <Award className="w-4 h-4" />
-      },
-      { 
-        name: 'Laudo médico (PCD)', 
-        key: 'check-laudo',
-        value: 'nao_se_aplica', 
-        required: candidate.VAGAPCD === 'Sim',
-        icon: <Stethoscope className="w-4 h-4" />
-      },
-      { 
-        name: 'Currículo atualizado', 
-        key: 'check-curriculo',
-        value: 'nao_se_aplica', 
-        required: true,
-        icon: <FileText className="w-4 h-4" />
-      }
-    ]);
+    setDocuments(initialDocuments);
     setClassification(null);
     setNotes('');
     setDisqualificationReason('');
@@ -262,6 +337,7 @@ export default function ScreeningModal({
     return candidate.VAGAPCD === 'Sim' ? 'Sim' : 'Não';
   };
 
+  // 🎯 RENDERIZAÇÃO DO MODAL
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -286,7 +362,7 @@ export default function ScreeningModal({
               </div>
               <div>
                 <span className="font-medium text-gray-700">Cargo Pretendido:</span>
-                <p className="text-gray-900">{getCargoPretendido()}</p>
+                <p className="text-gray-900 font-semibold">{getCargoPretendido()}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Vaga PCD:</span>
@@ -301,6 +377,25 @@ export default function ScreeningModal({
                 </div>
               )}
             </div>
+
+            {/* 🎯 INDICADOR DE REQUISITOS DO CARGO */}
+            {(cargoRequirements.requiresCNH || cargoRequirements.requiresRegularidade) && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                  <span className="font-medium text-yellow-800">Requisitos deste cargo:</span>
+                  <span className="text-yellow-700">
+                    {cargoRequirements.requiresCNH && 'CNH Obrigatória • '}
+                    {cargoRequirements.requiresRegularidade && 'Regularidade Profissional Obrigatória'}
+                  </span>
+                </div>
+                {cargoRequirements.requiresRegularidade && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    ⚠️ Profissional da saúde - exige registro no conselho de classe
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <button
             onClick={handleClose}
@@ -312,7 +407,6 @@ export default function ScreeningModal({
         </div>
 
         <div className="p-6">
-          {/* Indicador de etapa única */}
           <div className="flex items-center justify-center mb-8">
             <div className="flex items-center">
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white">
@@ -330,12 +424,16 @@ export default function ScreeningModal({
               <h3 className="font-semibold text-blue-800 mb-2">Verificação de Documentos</h3>
               <p className="text-sm text-blue-600">
                 Avalie a conformidade dos documentos do candidato. Documentos obrigatórios não conformes resultam em desclassificação.
+                <br />
+                <span className="font-medium">Cargo atual: {getCargoPretendido()}</span>
               </p>
             </div>
 
             <div className="space-y-4">
               {documents.map((doc, index) => (
-                <div key={doc.key} className="border border-gray-200 rounded-lg p-4">
+                <div key={doc.key} className={`border rounded-lg p-4 ${
+                  doc.required ? 'border-red-200 bg-red-50' : 'border-gray-200'
+                }`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       {doc.icon}
@@ -343,9 +441,14 @@ export default function ScreeningModal({
                         {doc.name}
                       </label>
                     </div>
-                    {doc.required && (
-                      <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Obrigatório</span>
-                    )}
+                    <div className="flex gap-2">
+                      {doc.required && (
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Obrigatório</span>
+                      )}
+                      {doc.conditionallyRequired && doc.required && (
+                        <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Para este cargo</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-4 flex-wrap">
                     {[
@@ -426,7 +529,7 @@ export default function ScreeningModal({
                 Desclassificar
               </button>
               
-              {!hasRequiredNonConformDocuments() && allRequiredDocumentsEvaluated() && (
+              {canClassify().canClassify && (
                 <button
                   onClick={handleClassify}
                   disabled={loading}
@@ -437,6 +540,14 @@ export default function ScreeningModal({
                 </button>
               )}
             </div>
+
+            {!canClassify().canClassify && allRequiredDocumentsEvaluated() && (
+              <div className="text-center py-2">
+                <p className="text-sm text-orange-600">
+                  ⚠️ {canClassify().reason}
+                </p>
+              </div>
+            )}
 
             {loading && (
               <div className="text-center py-4">
