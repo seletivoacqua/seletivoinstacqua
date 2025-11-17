@@ -321,7 +321,7 @@ export default function ScreeningModal({
   };
 
   const getCandidateName = () => {
-    return candidate.nome_completo || candidate.full_name || 'Candidato';
+    return candidate.NOMECOMPLETO || candidate.full_name || 'Candidato';
   };
 
   const getCandidateCPF = () => {
