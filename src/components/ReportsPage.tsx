@@ -31,10 +31,9 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [loading, setLoading] = useState(false);
   const [loadingLists, setLoadingLists] = useState(true);
   
-  // Listas separadas: analistas vêm dos dados, entrevistadores vêm do backend
-  const [uniqueAnalysts, setUniqueAnalysts] = useState<Analyst[]>([]);   // ← analistas reais da triagem
-  const [interviewers, setInterviewers] = useState<Analyst[]>([]);       // ← entrevistadores do backend
-
+  const [uniqueAnalysts, setUniqueAnalysts] = useState<Analyst[]>([]);
+  const [interviewers, setInterviewers] = useState<Analyst[]>([]);
+  
   const [selectedAnalyst, setSelectedAnalyst] = useState<string>('todos');
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('todos');
   const [reportType, setReportType] = useState<ReportType>('classificados');
@@ -47,20 +46,26 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     entrevistaDesclassificados: 0,
   });
 
+  // Carrega uma vez só
   useEffect(() => {
-    loadInterviewers();    // só carrega entrevistadores do backend
+    loadInterviewers();
     loadStats();
   }, []);
 
+  // Recarrega relatório quando mudar tipo ou filtro
   useEffect(() => {
-    if (reportType) {
-      loadReport();
-    }
-  }, [reportType, selectedAnalyst, selectedInterviewer]);
+    // Reseta filtros ao trocar tipo de relatório
+    setSelectedAnalyst('todos');
+    setSelectedInterviewer('todos');
+    setUniqueAnalysts([]); // ← ESSA LINHA É A SALVAÇÃO
+    loadReport();
+  }, [reportType]);
 
-  // -------------------------------------------------
-  // Carrega apenas os ENTREVISTADORES do backend
-  // -------------------------------------------------
+  // Recarrega só quando mudar filtro (não quando mudar tipo)
+  useEffect(() => {
+    if (reportType) loadReport();
+  }, [selectedAnalyst, selectedInterviewer]);
+
   async function loadInterviewers() {
     try {
       setLoadingLists(true);
@@ -88,9 +93,6 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }
 
-  // -------------------------------------------------
-  // Carrega estatísticas
-  // -------------------------------------------------
   async function loadStats() {
     try {
       const { googleSheetsService } = await import('../services/googleSheets');
@@ -103,19 +105,17 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }
 
-  // -------------------------------------------------
-  // Carrega relatório + extrai analistas únicos
-  // -------------------------------------------------
   async function loadReport() {
     try {
       setLoading(true);
+      setReportData([]);
 
       const { googleSheetsService } = await import('../services/googleSheets');
 
       let analystEmail: string | undefined;
       let interviewerEmail: string | undefined;
 
-      if (selectedAnalyst !== 'todos') {
+      if (selectedAnalyst !== 'todos' && uniqueAnalysts.length > 0) {
         const analyst = uniqueAnalysts.find(a => a.id === selectedAnalyst);
         analystEmail = analyst?.email;
       }
@@ -134,14 +134,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         const data = Array.isArray(result.data) ? result.data : [];
         setReportData(data);
 
-        // Extrai analistas únicos apenas nos relatórios de triagem
-        if (shouldShowAnalystFilter()) {
+        // Só extrai analistas nos relatórios de triagem
+        if (shouldShowAnalystFilter() && data.length > 0) {
           const analystMap = new Map<string, Analyst>();
-
           data.forEach((c: any) => {
-            const email = c.assigned_analyst_email || c.analista_email || c.analista_triagem_email || c.analistaEmail;
+            const email = c.assigned_analyst_email || c.analista_email || c.analista_triagem_email || c.analistaEmail || c.analista;
             const name = c.assigned_analyst_name || c.analista_triagem || c.Analista || c.analista;
-
             if (email && name) {
               analystMap.set(email, {
                 id: email,
@@ -156,7 +154,6 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
             .sort((a, b) => a.name.localeCompare(b.name));
           setUniqueAnalysts(uniqueList);
         }
-
       } else {
         setReportData([]);
         if (shouldShowAnalystFilter()) setUniqueAnalysts([]);
@@ -164,22 +161,10 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     } catch (error) {
       console.error('Erro ao carregar relatório:', error);
       setReportData([]);
+      if (shouldShowAnalystFilter()) setUniqueAnalysts([]);
     } finally {
       setLoading(false);
     }
-  }
-
-  // -------------------------------------------------
-  // Helpers
-  // -------------------------------------------------
-  function getCandidateField(candidate: Candidate, ...fieldNames: string[]): string {
-    for (const field of fieldNames) {
-      const value = (candidate as any)[field];
-      if (value !== undefined && value !== null && value !== '') {
-        return String(value);
-      }
-    }
-    return '';
   }
 
   function shouldShowAnalystFilter() {
@@ -200,22 +185,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }
 
-  // -------------------------------------------------
-  // Exportações (CSV, Excel, PDF) - igual ao anterior
-  // -------------------------------------------------
   function exportToCSV() {
     if (reportData.length === 0) return alert('Não há dados para exportar');
-    // (código de exportação igual ao anterior - mantido funcionando)
-    // ... (você já tem esse código funcionando, não precisa mudar)
     alert('Exportação CSV em desenvolvimento');
   }
-
   function exportToExcel() { exportToCSV(); }
   function exportToPDF() { alert('Exportação PDF em desenvolvimento'); }
 
-  // -------------------------------------------------
-  // Render
-  // -------------------------------------------------
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Header + Cards */}
@@ -258,11 +234,11 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               </select>
             </div>
 
-            {/* Filtro Analista (só em triagem) */}
+            {/* Filtro Analista */}
             {shouldShowAnalystFilter() && (
               <div>
                 <label className="block text-xs text-gray-600 mb-1">
-                  Analista {uniqueAnalysts.length > 0 && `(${uniqueAnalysts.length})`}
+                  Analista {uniqueAnalysts.length > 0 ? `(${uniqueAnalysts.length})` : ''}
                 </label>
                 <select value={selectedAnalyst} onChange={(e) => setSelectedAnalyst(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
@@ -279,11 +255,11 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               </div>
             )}
 
-            {/* Filtro Entrevistador (só em entrevista) */}
+            {/* Filtro Entrevistador */}
             {shouldShowInterviewerFilter() && (
               <div>
                 <label className="block text-xs text-gray-600 mb-1">
-                  Entrevistador {interviewers.length > 0 && `(${interviewers.length})`}
+                  Entrevistador {interviewers.length > 0 ? `(${interviewers.length})` : ''}
                 </label>
                 <select value={selectedInterviewer} onChange={(e) => setSelectedInterviewer(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
@@ -292,7 +268,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                   {loadingLists ? (
                     <option disabled>Carregando...</option>
                   ) : interviewers.length === 0 ? (
-                    <option disabled>Nenhum entrevistador</option>
+                    <option disabled>Nenhum cadastrado</option>
                   ) : (
                     interviewers.map(i => (
                       <option key={i.id} value={i.id}>{i.name}</option>
@@ -320,7 +296,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         </div>
       </div>
 
-      {/* Tabela */}
+      {/* Conteúdo */}
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -339,8 +315,9 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                 {reportData.length} registro{reportData.length !== 1 && 's'} encontrado{reportData.length !== 1 && 's'}
               </p>
             </div>
-            {/* Tabela mantida igual - funciona perfeitamente */}
-            <div className="text-center py-8 text-gray-500">Tabela completa mantida (código longo, mas 100% funcional)</div>
+            <div className="text-center py-8 text-gray-500">
+              Tabela completa aqui (seu código original da tabela)
+            </div>
           </div>
         )}
       </div>
