@@ -6,7 +6,7 @@ import CandidateList from './CandidateList';
 import DocumentViewer from './DocumentViewer';
 import MetricsPanel from './MetricsPanel';
 import ActionPanel from './ActionPanel';
-import ReportModal from './ReportModal';
+import ReportModal from './ReportsPage';
 import {
   generateGeneralReportHTML,
   generateClassifiedReportHTML,
@@ -165,18 +165,18 @@ export default function Dashboard({ sessionId, analystEmail, onLogout }: Dashboa
     setShowReportModal(true);
   };
 
-  const handleGenerateGeneralReport = () => {
-    const html = generateGeneralReportHTML(candidates, analystEmail);
+  const handleGenerateGeneralReport = (filterType: string, filterValue: string) => {
+    const html = generateGeneralReportHTML(candidates, analystEmail, filterType, filterValue);
     openReportInNewWindow(html);
   };
 
-  const handleGenerateClassifiedReport = () => {
-    const html = generateClassifiedReportHTML(candidates, analystEmail);
+  const handleGenerateClassifiedReport = (filterType: string, filterValue: string) => {
+    const html = generateClassifiedReportHTML(candidates, analystEmail, filterType, filterValue);
     openReportInNewWindow(html);
   };
 
-  const handleGenerateDisqualifiedReport = () => {
-    const html = generateDisqualifiedReportHTML(candidates, analystEmail);
+  const handleGenerateDisqualifiedReport = (filterType: string, filterValue: string) => {
+    const html = generateDisqualifiedReportHTML(candidates, analystEmail, filterType, filterValue);
     openReportInNewWindow(html);
   };
 

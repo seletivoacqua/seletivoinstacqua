@@ -1,24 +1,50 @@
 import { Candidate } from '../types/candidate';
 
-export function generateGeneralReportHTML(candidates: Candidate[], analystEmail: string): string {
-  const totalCandidates = candidates.length;
-  const classified = candidates.filter(c => c.statusTriagem === 'Classificado').length;
-  const disqualified = candidates.filter(c => c.statusTriagem === 'Desclassificado').length;
-  const review = candidates.filter(c => c.statusTriagem === 'Revisar').length;
-  const pending = candidates.filter(c => !c.statusTriagem || c.statusTriagem === '').length;
+function filterCandidates(candidates: Candidate[], filterType: string, filterValue: string): Candidate[] {
+  if (filterType === 'all' || filterValue === 'todos') {
+    return candidates;
+  }
+
+  if (filterType === 'analyst') {
+    return candidates.filter(c => c.analistaTriagem === filterValue);
+  }
+
+  if (filterType === 'interviewer') {
+    return candidates.filter(c => c.entrevistador === filterValue);
+  }
+
+  return candidates;
+}
+
+export function generateGeneralReportHTML(
+  candidates: Candidate[],
+  analystEmail: string,
+  filterType: string = 'all',
+  filterValue: string = 'todos'
+): string {
+  const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
+  const totalCandidates = filteredCandidates.length;
+  const classified = filteredCandidates.filter(c => c.statusTriagem === 'Classificado').length;
+  const disqualified = filteredCandidates.filter(c => c.statusTriagem === 'Desclassificado').length;
+  const review = filteredCandidates.filter(c => c.statusTriagem === 'Revisar').length;
+  const pending = filteredCandidates.filter(c => !c.statusTriagem || c.statusTriagem === '').length;
 
   const byArea = {
-    Administrativa: candidates.filter(c => c.area === 'Administrativa').length,
-    Assistencial: candidates.filter(c => c.area === 'Assistencial').length
+    Administrativa: filteredCandidates.filter(c => c.area === 'Administrativa').length,
+    Assistencial: filteredCandidates.filter(c => c.area === 'Assistencial').length
   };
 
   const classifiedByArea = {
-    Administrativa: candidates.filter(c => c.area === 'Administrativa' && c.statusTriagem === 'Classificado').length,
-    Assistencial: candidates.filter(c => c.area === 'Assistencial' && c.statusTriagem === 'Classificado').length
+    Administrativa: filteredCandidates.filter(c => c.area === 'Administrativa' && c.statusTriagem === 'Classificado').length,
+    Assistencial: filteredCandidates.filter(c => c.area === 'Assistencial' && c.statusTriagem === 'Classificado').length
   };
 
   const date = new Date().toLocaleDateString('pt-BR');
   const time = new Date().toLocaleTimeString('pt-BR');
+
+  const filterLabel = filterType === 'all' ? 'Todos' :
+                      filterType === 'analyst' ? `Analista: ${filterValue}` :
+                      `Entrevistador: ${filterValue}`;
 
   return `
 <!DOCTYPE html>
@@ -129,7 +155,8 @@ export function generateGeneralReportHTML(candidates: Candidate[], analystEmail:
 
   <div class="header">
     <p><strong>Data:</strong> ${date} às ${time}</p>
-    <p><strong>Analista:</strong> ${analystEmail}</p>
+    <p><strong>Gerado por:</strong> ${analystEmail}</p>
+    <p><strong>Filtro:</strong> ${filterLabel}</p>
   </div>
 
   <h2>Resumo Geral</h2>
@@ -185,7 +212,7 @@ export function generateGeneralReportHTML(candidates: Candidate[], analystEmail:
       <th>Cargo</th>
       <th>Nº Registro</th>
     </tr>
-    ${candidates
+    ${filteredCandidates
       .filter(c => c.statusTriagem === 'Classificado')
       .map(c => `
     <tr>
@@ -206,7 +233,7 @@ export function generateGeneralReportHTML(candidates: Candidate[], analystEmail:
       <th>Cargo</th>
       <th>Nº Registro</th>
     </tr>
-    ${candidates
+    ${filteredCandidates
       .filter(c => c.statusTriagem === 'Desclassificado')
       .map(c => `
     <tr>
@@ -227,7 +254,7 @@ export function generateGeneralReportHTML(candidates: Candidate[], analystEmail:
       <th>Cargo</th>
       <th>Nº Registro</th>
     </tr>
-    ${candidates
+    ${filteredCandidates
       .filter(c => c.statusTriagem === 'Revisar')
       .map(c => `
     <tr>
@@ -244,10 +271,20 @@ export function generateGeneralReportHTML(candidates: Candidate[], analystEmail:
   `;
 }
 
-export function generateClassifiedReportHTML(candidates: Candidate[], analystEmail: string): string {
-  const classified = candidates.filter(c => c.statusTriagem === 'Classificado');
+export function generateClassifiedReportHTML(
+  candidates: Candidate[],
+  analystEmail: string,
+  filterType: string = 'all',
+  filterValue: string = 'todos'
+): string {
+  const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
+  const classified = filteredCandidates.filter(c => c.statusTriagem === 'Classificado');
   const date = new Date().toLocaleDateString('pt-BR');
   const time = new Date().toLocaleTimeString('pt-BR');
+
+  const filterLabel = filterType === 'all' ? 'Todos' :
+                      filterType === 'analyst' ? `Analista: ${filterValue}` :
+                      `Entrevistador: ${filterValue}`;
 
   return `
 <!DOCTYPE html>
@@ -311,7 +348,8 @@ export function generateClassifiedReportHTML(candidates: Candidate[], analystEma
 
   <div class="header">
     <p><strong>Data:</strong> ${date} às ${time}</p>
-    <p><strong>Analista:</strong> ${analystEmail}</p>
+    <p><strong>Gerado por:</strong> ${analystEmail}</p>
+    <p><strong>Filtro:</strong> ${filterLabel}</p>
   </div>
 
   <p class="count">Total: ${classified.length} candidatos classificados</p>
@@ -343,10 +381,20 @@ export function generateClassifiedReportHTML(candidates: Candidate[], analystEma
   `;
 }
 
-export function generateDisqualifiedReportHTML(candidates: Candidate[], analystEmail: string): string {
-  const disqualified = candidates.filter(c => c.statusTriagem === 'Desclassificado');
+export function generateDisqualifiedReportHTML(
+  candidates: Candidate[],
+  analystEmail: string,
+  filterType: string = 'all',
+  filterValue: string = 'todos'
+): string {
+  const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
+  const disqualified = filteredCandidates.filter(c => c.statusTriagem === 'Desclassificado');
   const date = new Date().toLocaleDateString('pt-BR');
   const time = new Date().toLocaleTimeString('pt-BR');
+
+  const filterLabel = filterType === 'all' ? 'Todos' :
+                      filterType === 'analyst' ? `Analista: ${filterValue}` :
+                      `Entrevistador: ${filterValue}`;
 
   return `
 <!DOCTYPE html>
@@ -410,7 +458,8 @@ export function generateDisqualifiedReportHTML(candidates: Candidate[], analystE
 
   <div class="header">
     <p><strong>Data:</strong> ${date} às ${time}</p>
-    <p><strong>Analista:</strong> ${analystEmail}</p>
+    <p><strong>Gerado por:</strong> ${analystEmail}</p>
+    <p><strong>Filtro:</strong> ${filterLabel}</p>
   </div>
 
   <p class="count">Total: ${disqualified.length} candidatos desclassificados</p>
