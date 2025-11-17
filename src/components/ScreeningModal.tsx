@@ -223,7 +223,6 @@ export default function ScreeningModal({
       const screeningData = {
         candidateId: candidate.id,
         registrationNumber: candidate.registration_number,
-        CPF: candidate.CPF,
         status: statusForScript,
         
         'checkrg-cpf': documents.find(d => d.key === 'checkrg-cpf')?.value,
