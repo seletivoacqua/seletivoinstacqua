@@ -165,12 +165,13 @@ export const googleSheetsService = {
 
   async getReport(
     reportType: string,
-    analystEmail?: string
+    analystEmail?: string,
+    interviewerEmail?: string
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('getReport', {
-      reportType,
-      analystEmail
-    });
+    const params: any = { reportType };
+    if (analystEmail) params.analystEmail = analystEmail;
+    if (interviewerEmail) params.interviewerEmail = interviewerEmail;
+    return makeRequest('getReport', params);
   },
 
   async getEmailAliases(): Promise<GoogleSheetsResponse> {
