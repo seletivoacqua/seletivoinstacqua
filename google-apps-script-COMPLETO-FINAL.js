@@ -1720,6 +1720,7 @@ function saveScreening(params) {
     const analistaCol = col['Analista'];
     const dataTriagemCol = col['Data Triagem'];
     const observacoesCol = col['Observações'];
+    const motivoDesclassificacaoCol = col['Motivo Desclassificação'];
     const capacidadeTecnicaCol = col['capacidade_tecnica'];
     const experienciaCol = col['experiencia'];
     const pontuacaoTriagemCol = col['pontuacao_triagem'];
@@ -1759,6 +1760,11 @@ function saveScreening(params) {
 
     if (observacoesCol >= 0 && params.notes) {
       rowVals[observacoesCol] = params.notes;
+    }
+
+    if (motivoDesclassificacaoCol >= 0 && params.disqualification_reason) {
+      rowVals[motivoDesclassificacaoCol] = params.disqualification_reason;
+      Logger.log('📝 Salvando motivo de desclassificação: ' + params.disqualification_reason);
     }
 
     if (capacidadeTecnicaCol >= 0 && params.capacidade_tecnica !== undefined) {

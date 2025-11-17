@@ -79,9 +79,12 @@ export default function DisqualifiedCandidatesList() {
 
   function getMotivoDesclassificacao(candidate: Candidate) {
     // Tenta diferentes campos onde o motivo pode estar armazenado
-    return candidate.disqualification_reason?.reason || 
-           candidate.motivo_desclassificacao || 
-           'Motivo não informado';
+    const motivo = candidate['Motivo Desclassificação'] ||
+           candidate.motivo_desclassificacao ||
+           candidate.disqualification_reason?.reason ||
+           (typeof candidate.disqualification_reason === 'string' ? candidate.disqualification_reason : null);
+
+    return motivo || 'Motivo não informado';
   }
 
   function getDataTriagem(candidate: Candidate) {
