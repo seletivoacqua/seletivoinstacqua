@@ -1,36 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Candidate } from '../types/candidate';
-import { processMultipleUrls } from '../services/jotformService';
-import {
-  FileText,
-  GraduationCap,
-  CreditCard,
-  Award,
-  FolderOpen,
-  ExternalLink,
-  AlertCircle,
-  User,
-  Stethoscope,
-  Briefcase
-} from 'lucide-react';
-
-interface DocumentViewerProps {
-  candidate: Candidate;
-  onFocusDocument?: (docKey: string) => void;
-}
-
-interface Document {
-  key: string;
-  label: string;
-  url?: string;
-  icon: React.ReactNode;
-  isPrimary?: boolean;
-}
-
 export default function DocumentViewer({ candidate, onFocusDocument }: DocumentViewerProps) {
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
 
-  // Mapeamento dos documentos baseado nas colunas exatas da sua planilha
+  // MAPEAMENTO CORRETO baseado no primeiro código
   const documents: Document[] = [
     { 
       key: 'curriculo', 
@@ -40,11 +11,24 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
       isPrimary: true 
     },
     { 
-      key: 'documentos_pessoais', 
-      label: 'Documentos Pessoais', 
-      url: candidate.DOCUMENTOSPESSOAIS,
-      icon: <User className="w-5 h-5" />, 
+      key: 'copia_rg', 
+      label: 'Cópia RG', 
+      url: candidate.COPIARG,
+      icon: <CreditCard className="w-5 h-5" />, 
       isPrimary: true 
+    },
+    { 
+      key: 'copia_cpf', 
+      label: 'Cópia CPF', 
+      url: candidate.COPIACPF,
+      icon: <CreditCard className="w-5 h-5" />, 
+      isPrimary: true 
+    },
+    { 
+      key: 'cnh', 
+      label: 'CNH', 
+      url: candidate.CNH,
+      icon: <CreditCard className="w-5 h-5" /> 
     },
     { 
       key: 'diploma', 
@@ -54,29 +38,22 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
       isPrimary: true 
     },
     { 
-      key: 'documentos_profissionais', 
-      label: 'Documentos Profissionais', 
-      url: candidate.DOCUMENTOSPROFISSIONAIS,
-      icon: <Briefcase className="w-5 h-5" /> 
-    },
-    { 
       key: 'documentos_conselho', 
-      label: 'Documentos do Conselho', 
+      label: 'Conselho/Comprovante', 
       url: candidate.DOCUMENTOSCONSELHO,
-      icon: <CreditCard className="w-5 h-5" />,
+      icon: <Award className="w-5 h-5" />,
       isPrimary: candidate.AREAATUACAO === 'Assistencial' 
     },
     { 
-      key: 'cursos_especializacoes', 
-      label: 'Cursos e Especializações', 
-      url: candidate.ESPECIALIZACOESCURSOS,
-      icon: <Award className="w-5 h-5" /> 
+      key: 'experiencia_profissional', 
+      label: 'Experiência Profissional', 
+      url: candidate.EXPERIENCIAPROFISSIONAL,
+      icon: <Briefcase className="w-5 h-5" /> 
     },
     { 
       key: 'laudo_medico', 
       label: 'Laudo Médico', 
-      // Verifica múltiplas possibilidades de campo
-      url: candidate['LAUDO MEDICO'] || candidate.LAUDOMEDICO || candidate.laudo_medico,
+      url: candidate.LAUDOMEDICO,
       icon: <Stethoscope className="w-5 h-5" /> 
     }
   ];
@@ -198,9 +175,9 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
           <div>
             <p className="text-xs text-slate-500 uppercase font-semibold">Status</p>
             <p className="text-sm text-slate-800 font-medium">
-              {candidate.status === 'concluido'
+              {candidate.Status === 'concluido'  // ✅ CORRIGIDO: Status com S maiúsculo
                 ? 'Concluído'
-                : candidate.status === 'em_analise'
+                : candidate.Status === 'em_analise'
                 ? 'Em Análise'
                 : 'Pendente'}
             </p>
