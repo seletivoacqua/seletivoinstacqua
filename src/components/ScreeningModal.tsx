@@ -191,14 +191,13 @@ export default function ScreeningModal({
   // 🎯 CLASSIFICAR CANDIDATO
   const handleClassify = async () => {
     const validation = canClassify();
-    
+
     if (!validation.canClassify) {
       alert(validation.reason);
       return;
     }
-    
-    setClassification('classificado');
-    await submitScreening();
+
+    await submitScreening('classificado');
   };
 
   // 🎯 DESCLASSIFICAR CANDIDATO
@@ -208,14 +207,14 @@ export default function ScreeningModal({
       return;
     }
 
-    setClassification('desclassificado');
-    await submitScreening();
+    await submitScreening('desclassificado');
   };
 
   // 🎯 ENVIAR TRIAGEM
- const submitScreening = async () => {
+ const submitScreening = async (finalClassification: 'classificado' | 'desclassificado') => {
   try {
     setLoading(true);
+    setClassification(finalClassification);
     const { googleSheetsService } = await import('../services/googleSheets');
 
     // ✅ Validação: pelo menos um identificador deve existir
@@ -223,7 +222,7 @@ export default function ScreeningModal({
       throw new Error('Nenhum identificador válido encontrado para o candidato (CPF, número de inscrição ou ID)');
     }
 
-    const statusForScript = classification === 'classificado' ? 'Classificado' : 'Desclassificado';
+    const statusForScript = finalClassification === 'classificado' ? 'classificado' : 'desclassificado';
 
     // ✅ Priorize o registrationNumber, depois CPF, depois candidateId
     const screeningData = {
@@ -238,16 +237,16 @@ export default function ScreeningModal({
       'check-regularidade': documents.find(d => d.key === 'check-regularidade')?.value,
       'check-laudo': documents.find(d => d.key === 'check-laudo')?.value,
       'check-curriculo': documents.find(d => d.key === 'check-curriculo')?.value,
-      
-      ...(classification === 'desclassificado' && {
+
+      ...(finalClassification === 'desclassificado' && {
         disqualification_reason: disqualificationReason || getDisqualificationReason(),
         documentos_nao_conformes: documents
           .filter(doc => doc.value === 'nao_conforme')
           .map(doc => doc.name)
           .join(', ')
       }),
-      
-      notes: formatNotes(),
+
+      notes: formatNotes(finalClassification),
       analystEmail: user?.email,
       screenedAt: new Date().toISOString()
     };
@@ -281,25 +280,25 @@ export default function ScreeningModal({
     return disqualificationReason || 'Desclassificado por documento obrigatório não conforme';
   };
 
-  const formatNotes = (): string => {
+  const formatNotes = (finalClassification: 'classificado' | 'desclassificado'): string => {
     const parts = [];
-    
-    const documentResults = documents.map(doc => 
+
+    const documentResults = documents.map(doc =>
       `${doc.name}: ${formatDocumentValue(doc.value)}${doc.conditionallyRequired ? ' (Obrigatório para este cargo)' : ''}`
     ).join(' | ');
-    
+
     parts.push(`VERIFICAÇÃO DOCUMENTAL: ${documentResults}`);
-    
-    if (classification === 'desclassificado' && disqualificationReason) {
+
+    if (finalClassification === 'desclassificado' && disqualificationReason) {
       parts.push(`MOTIVO DESCLASSIFICAÇÃO: ${disqualificationReason}`);
     }
-    
+
     if (notes.trim()) {
       parts.push(`OBSERVAÇÕES: ${notes}`);
     }
 
     parts.push(`CARGO: ${candidate.CARGOPRETENDIDO} | CNH OBRIGATÓRIA: ${cargoRequirements.requiresCNH ? 'Sim' : 'Não'} | REGULARIDADE OBRIGATÓRIA: ${cargoRequirements.requiresRegularidade ? 'Sim' : 'Não'}`);
-    
+
     return parts.join('\n');
   };
 
