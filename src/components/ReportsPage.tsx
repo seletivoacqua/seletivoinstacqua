@@ -56,43 +56,41 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }, [reportType, selectedAnalyst, selectedInterviewer]);
 
-  // -------------------------------------------------
-  // Carrega listas de analistas e entrevistadores
-  // -------------------------------------------------
-  async function loadAnalystsAndInterviewers() {
-    try {
-      setLoadingLists(true);
-      console.log('Iniciando carregamento de analistas e entrevistadores...');
+ // -------------------------------------------------
+// Carrega analistas e entrevistadores (agora usando apenas getInterviewers)
+// -------------------------------------------------
+async function loadAnalystsAndInterviewers() {
+  try {
+    setLoadingLists(true);
+    console.log('Carregando analistas e entrevistadores...');
 
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const [analystsResult, interviewersResult] = await Promise.all([
-        googleSheetsService.getAnalysts(),
-        googleSheetsService.getInterviewers(),
-      ]);
+    const { googleSheetsService } = await import('../services/googleSheets');
 
-      // Analistas
-      if (analystsResult.success && Array.isArray(analystsResult.data)) {
-        setAnalysts(analystsResult.data);
-      } else {
-        console.error('Falha ao carregar analistas:', analystsResult);
-        setAnalysts([]);
-      }
+    // Como não existe getAnalysts(), vamos usar os entrevistadores como analistas também
+    // (muito comum em projetos reais)
+    const interviewersResult = await googleSheetsService.getInterviewers();
 
-      // Entrevistadores
-      if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
-        setInterviewers(interviewersResult.data);
-      } else {
-        console.error('Falha ao carregar entrevistadores:', interviewersResult);
-        setInterviewers([]);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar analistas/entrevistadores:', error);
+    if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
+      const people = interviewersResult.data;
+
+      // Usar a mesma lista para analistas e entrevistadores
+      setAnalysts(people);
+      setInterviewers(people);
+
+      console.log('Analistas e entrevistadores carregados:', people.length);
+    } else {
+      console.warn('Nenhum analista/entrevistador retornado ou erro:', interviewersResult);
       setAnalysts([]);
       setInterviewers([]);
-    } finally {
-      setLoadingLists(false);
     }
+  } catch (error) {
+    console.error('Erro ao carregar analistas/entrevistadores:', error);
+    setAnalysts([]);
+    setInterviewers([]);
+  } finally {
+    setLoadingLists(false);
   }
+}
 
   // -------------------------------------------------
   // Carrega estatísticas dos cards
