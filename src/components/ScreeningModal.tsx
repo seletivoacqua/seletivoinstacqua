@@ -222,7 +222,7 @@ export default function ScreeningModal({
       throw new Error('Nenhum identificador válido encontrado para o candidato (CPF, número de inscrição ou ID)');
     }
 
-    const statusForScript = finalClassification === 'classificado' ? 'classificado' : 'desclassificado';
+    const statusForScript = finalClassification === 'classificado' ? 'Classificado' : 'Desclassificado';
 
     // ✅ Priorize o registrationNumber, depois CPF, depois candidateId
     const screeningData = {

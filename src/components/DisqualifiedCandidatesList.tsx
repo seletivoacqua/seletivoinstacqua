@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { XCircle, Loader2 } from 'lucide-react';
+import { XCircle, Loader2, RefreshCw } from 'lucide-react';
 
 interface Candidate {
   id: string;
@@ -47,11 +47,11 @@ export default function DisqualifiedCandidatesList() {
     try {
       setLoading(true);
       console.log('🔍 Buscando candidatos desclassificados...');
-      
+
       const { googleSheetsService } = await import('../services/googleSheets');
-      
-      // CORREÇÃO: Usar 'desclassificada' (minúsculo) em vez de 'Desclassificado'
-      const result = await googleSheetsService.getCandidatesByStatus('desclassificada');
+
+      // Buscar com o status correto que o Google Apps Script espera
+      const result = await googleSheetsService.getCandidatesByStatus('Desclassificado');
 
       console.log('📊 Resultado da busca:', result);
 
@@ -59,9 +59,10 @@ export default function DisqualifiedCandidatesList() {
         throw new Error(result.error || 'Erro ao carregar candidatos');
       }
 
-      setCandidates(result.data || []);
-      console.log('✅ Candidatos desclassificados carregados:', result.data?.length || 0);
-      
+      const candidatesData = result.data || [];
+      setCandidates(candidatesData);
+      console.log('✅ Candidatos desclassificados carregados:', candidatesData.length);
+
     } catch (error) {
       console.error('❌ Erro ao carregar candidatos desclassificados:', error);
     } finally {
@@ -173,11 +174,21 @@ export default function DisqualifiedCandidatesList() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Candidatos Desclassificados</h2>
-        <p className="text-sm text-gray-600 mt-1">
-          {candidates.length} candidato(s) desclassificado(s)
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Candidatos Desclassificados</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            {candidates.length} candidato(s) desclassificado(s)
+          </p>
+        </div>
+        <button
+          onClick={loadDisqualifiedCandidates}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Atualizar
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
