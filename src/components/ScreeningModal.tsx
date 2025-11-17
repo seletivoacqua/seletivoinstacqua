@@ -65,7 +65,7 @@ export default function ScreeningModal({
       name: 'Regularidade Profissional', 
       key: 'check-regularidade',
       value: 'nao_se_aplica', 
-      required: true,
+      required: false,
       icon: <Award className="w-4 h-4" />
     },
     { 
