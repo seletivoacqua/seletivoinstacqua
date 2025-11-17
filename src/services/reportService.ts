@@ -1,4 +1,4 @@
-import { Candidate } from '../types/candidate';
+import { Candidate } from './candidateService';
 
 function filterCandidates(candidates: Candidate[], filterType: string, filterValue: string): Candidate[] {
   if (filterType === 'all' || filterValue === 'todos') {

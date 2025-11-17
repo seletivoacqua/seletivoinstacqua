@@ -10,12 +10,20 @@ import ReviewCandidatesList from './ReviewCandidatesList';
 import InterviewCandidatesList from './InterviewCandidatesList';
 import ReportsPage from './ReportsPage';
 import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye, Calendar, FileText } from 'lucide-react';
+import {
+  generateGeneralReportHTML,
+  generateClassifiedReportHTML,
+  generateDisqualifiedReportHTML,
+  openReportInNewWindow
+} from '../services/reportService';
 
 export default function AdminDashboard() {
   console.log('🎨 AdminDashboard RENDERIZADO - Este é o painel de ADMINISTRADOR');
   const { user, logout } = useAuth();
   console.log('👤 AdminDashboard - Usuário:', user);
   const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review' | 'interview' | 'reports'>('allocation');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [allCandidates, setAllCandidates] = useState<any[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
@@ -30,6 +38,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadStats();
     loadTotalTriados();
+    loadAllCandidates();
   }, []);
 
   async function loadStats() {
@@ -37,10 +46,20 @@ export default function AdminDashboard() {
       const data = await candidateService.getStatistics();
       setStats(prev => ({
         ...data,
-        total_triados: prev.total_triados // Mantém o valor atual de total_triados
+        total_triados: prev.total_triados
       }));
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
+    }
+  }
+
+  async function loadAllCandidates() {
+    try {
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const candidates = await googleSheetsService.fetchCandidates();
+      setAllCandidates(candidates);
+    } catch (error) {
+      console.error('Erro ao carregar candidatos:', error);
     }
   }
 
@@ -87,6 +106,21 @@ export default function AdminDashboard() {
       }));
     }
   }
+
+  const handleGenerateGeneralReport = (filterType: string, filterValue: string) => {
+    const html = generateGeneralReportHTML(allCandidates, user?.email || 'admin', filterType, filterValue);
+    openReportInNewWindow(html);
+  };
+
+  const handleGenerateClassifiedReport = (filterType: string, filterValue: string) => {
+    const html = generateClassifiedReportHTML(allCandidates, user?.email || 'admin', filterType, filterValue);
+    openReportInNewWindow(html);
+  };
+
+  const handleGenerateDisqualifiedReport = (filterType: string, filterValue: string) => {
+    const html = generateDisqualifiedReportHTML(allCandidates, user?.email || 'admin', filterType, filterValue);
+    openReportInNewWindow(html);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 overflow-y-auto">
@@ -225,12 +259,8 @@ export default function AdminDashboard() {
               Entrevista
             </button>
             <button
-              onClick={() => setActiveTab('reports')}
-              className={`px-4 py-3 font-medium flex items-center gap-2 border-b-2 transition-colors ${
-                activeTab === 'reports'
-                  ? 'border-purple-600 text-purple-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
+              onClick={() => setShowReportModal(true)}
+              className="px-4 py-3 font-medium flex items-center gap-2 border-b-2 border-transparent text-gray-600 hover:text-gray-800 transition-colors"
             >
               <FileText className="w-4 h-4" />
               Relatórios
@@ -254,10 +284,17 @@ export default function AdminDashboard() {
         )}
         {activeTab === 'classified' && <ClassifiedCandidatesList />}
         {activeTab === 'disqualified' && <DisqualifiedCandidatesList />}
-        {activeTab === 'reports' && <ReportsPage onClose={() => setActiveTab('allocation')} />}
         {activeTab === 'review' && <ReviewCandidatesList />}
         {activeTab === 'interview' && <InterviewCandidatesList />}
       </div>
+
+      <ReportsPage
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onGenerateGeneralReport={handleGenerateGeneralReport}
+        onGenerateClassifiedReport={handleGenerateClassifiedReport}
+        onGenerateDisqualifiedReport={handleGenerateDisqualifiedReport}
+      />
     </div>
   );
 }
