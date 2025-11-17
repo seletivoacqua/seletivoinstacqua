@@ -1,42 +1,84 @@
 import { Candidate } from './candidateService';
 
-function filterCandidates(candidates: Candidate[], filterType: string, filterValue: string): Candidate[] {
+function getCandidateField(candidate: any, ...fieldNames: string[]): string {
+  for (const fieldName of fieldNames) {
+    const value = candidate[fieldName];
+    if (value !== undefined && value !== null && value !== '') {
+      return String(value);
+    }
+  }
+  return '';
+}
+
+function getCandidateName(c: any): string {
+  return getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name', 'name');
+}
+
+function getCandidateArea(c: any): string {
+  return getCandidateField(c, 'AREAATUACAO', 'area', 'Area');
+}
+
+function getCandidateCargo(c: any): string {
+  return getCandidateField(c, 'CARGOPRETENDIDO', 'cargo', 'Cargo');
+}
+
+function getCandidateRegistration(c: any): string {
+  return getCandidateField(c, 'NUMEROINSCRICAO', 'Número de Inscrição', 'registration_number', 'CPF');
+}
+
+function getCandidateCPF(c: any): string {
+  return getCandidateField(c, 'CPF', 'cpf');
+}
+
+function getCandidateStatus(c: any): string {
+  const status = getCandidateField(c, 'Status', 'statusTriagem', 'status_triagem', 'status');
+  return status.toLowerCase();
+}
+
+function filterCandidates(candidates: any[], filterType: string, filterValue: string): any[] {
   if (filterType === 'all' || filterValue === 'todos') {
     return candidates;
   }
 
   if (filterType === 'analyst') {
-    return candidates.filter(c => c.analistaTriagem === filterValue);
+    return candidates.filter(c => {
+      const analyst = c.Analista || c.analistaTriagem || c.analista_triagem || c.assigned_to || '';
+      return analyst.toLowerCase().trim() === filterValue.toLowerCase().trim();
+    });
   }
 
   if (filterType === 'interviewer') {
-    return candidates.filter(c => c.entrevistador === filterValue);
+    return candidates.filter(c => {
+      const interviewer = c.entrevistador || c.Entrevistador || c.interviewer || '';
+      return interviewer.toLowerCase().trim() === filterValue.toLowerCase().trim();
+    });
   }
 
   return candidates;
 }
 
 export function generateGeneralReportHTML(
-  candidates: Candidate[],
+  candidates: any[],
   analystEmail: string,
   filterType: string = 'all',
   filterValue: string = 'todos'
 ): string {
   const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
   const totalCandidates = filteredCandidates.length;
-  const classified = filteredCandidates.filter(c => c.statusTriagem === 'Classificado').length;
-  const disqualified = filteredCandidates.filter(c => c.statusTriagem === 'Desclassificado').length;
-  const review = filteredCandidates.filter(c => c.statusTriagem === 'Revisar').length;
-  const pending = filteredCandidates.filter(c => !c.statusTriagem || c.statusTriagem === '').length;
+
+  const classified = filteredCandidates.filter(c => getCandidateStatus(c) === 'classificado').length;
+  const disqualified = filteredCandidates.filter(c => getCandidateStatus(c) === 'desclassificado').length;
+  const review = filteredCandidates.filter(c => getCandidateStatus(c) === 'revisar').length;
+  const pending = filteredCandidates.filter(c => !getCandidateStatus(c) || getCandidateStatus(c) === '').length;
 
   const byArea = {
-    Administrativa: filteredCandidates.filter(c => c.area === 'Administrativa').length,
-    Assistencial: filteredCandidates.filter(c => c.area === 'Assistencial').length
+    Administrativa: filteredCandidates.filter(c => getCandidateArea(c) === 'Administrativa').length,
+    Assistencial: filteredCandidates.filter(c => getCandidateArea(c) === 'Assistencial').length
   };
 
   const classifiedByArea = {
-    Administrativa: filteredCandidates.filter(c => c.area === 'Administrativa' && c.statusTriagem === 'Classificado').length,
-    Assistencial: filteredCandidates.filter(c => c.area === 'Assistencial' && c.statusTriagem === 'Classificado').length
+    Administrativa: filteredCandidates.filter(c => getCandidateArea(c) === 'Administrativa' && getCandidateStatus(c) === 'classificado').length,
+    Assistencial: filteredCandidates.filter(c => getCandidateArea(c) === 'Assistencial' && getCandidateStatus(c) === 'classificado').length
   };
 
   const date = new Date().toLocaleDateString('pt-BR');
@@ -213,13 +255,13 @@ export function generateGeneralReportHTML(
       <th>Nº Registro</th>
     </tr>
     ${filteredCandidates
-      .filter(c => c.statusTriagem === 'Classificado')
+      .filter(c => getCandidateStatus(c) === 'classificado')
       .map(c => `
     <tr>
-      <td>${c.name}</td>
-      <td>${c.area}</td>
-      <td>${c.area === 'Administrativa' ? c.cargoAdministrativo : c.cargoAssistencial}</td>
-      <td>${c.registrationNumber}</td>
+      <td>${getCandidateName(c)}</td>
+      <td>${getCandidateArea(c)}</td>
+      <td>${getCandidateCargo(c)}</td>
+      <td>${getCandidateRegistration(c)}</td>
     </tr>
       `)
       .join('')}
@@ -234,13 +276,13 @@ export function generateGeneralReportHTML(
       <th>Nº Registro</th>
     </tr>
     ${filteredCandidates
-      .filter(c => c.statusTriagem === 'Desclassificado')
+      .filter(c => getCandidateStatus(c) === 'desclassificado')
       .map(c => `
     <tr>
-      <td>${c.name}</td>
-      <td>${c.area}</td>
-      <td>${c.area === 'Administrativa' ? c.cargoAdministrativo : c.cargoAssistencial}</td>
-      <td>${c.registrationNumber}</td>
+      <td>${getCandidateName(c)}</td>
+      <td>${getCandidateArea(c)}</td>
+      <td>${getCandidateCargo(c)}</td>
+      <td>${getCandidateRegistration(c)}</td>
     </tr>
       `)
       .join('')}
@@ -255,13 +297,13 @@ export function generateGeneralReportHTML(
       <th>Nº Registro</th>
     </tr>
     ${filteredCandidates
-      .filter(c => c.statusTriagem === 'Revisar')
+      .filter(c => getCandidateStatus(c) === 'revisar')
       .map(c => `
     <tr>
-      <td>${c.name}</td>
-      <td>${c.area}</td>
-      <td>${c.area === 'Administrativa' ? c.cargoAdministrativo : c.cargoAssistencial}</td>
-      <td>${c.registrationNumber}</td>
+      <td>${getCandidateName(c)}</td>
+      <td>${getCandidateArea(c)}</td>
+      <td>${getCandidateCargo(c)}</td>
+      <td>${getCandidateRegistration(c)}</td>
     </tr>
       `)
       .join('')}
@@ -272,13 +314,13 @@ export function generateGeneralReportHTML(
 }
 
 export function generateClassifiedReportHTML(
-  candidates: Candidate[],
+  candidates: any[],
   analystEmail: string,
   filterType: string = 'all',
   filterValue: string = 'todos'
 ): string {
   const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
-  const classified = filteredCandidates.filter(c => c.statusTriagem === 'Classificado');
+  const classified = filteredCandidates.filter(c => getCandidateStatus(c) === 'classificado');
   const date = new Date().toLocaleDateString('pt-BR');
   const time = new Date().toLocaleTimeString('pt-BR');
 
@@ -367,11 +409,11 @@ export function generateClassifiedReportHTML(
       .map((c, idx) => `
     <tr>
       <td>${idx + 1}</td>
-      <td>${c.name}</td>
-      <td>${c.area}</td>
-      <td>${c.area === 'Administrativa' ? c.cargoAdministrativo : c.cargoAssistencial}</td>
-      <td>${c.cpf || '-'}</td>
-      <td>${c.registrationNumber}</td>
+      <td>${getCandidateName(c)}</td>
+      <td>${getCandidateArea(c)}</td>
+      <td>${getCandidateCargo(c)}</td>
+      <td>${getCandidateCPF(c) || '-'}</td>
+      <td>${getCandidateRegistration(c)}</td>
     </tr>
       `)
       .join('')}
@@ -382,13 +424,13 @@ export function generateClassifiedReportHTML(
 }
 
 export function generateDisqualifiedReportHTML(
-  candidates: Candidate[],
+  candidates: any[],
   analystEmail: string,
   filterType: string = 'all',
   filterValue: string = 'todos'
 ): string {
   const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
-  const disqualified = filteredCandidates.filter(c => c.statusTriagem === 'Desclassificado');
+  const disqualified = filteredCandidates.filter(c => getCandidateStatus(c) === 'desclassificado');
   const date = new Date().toLocaleDateString('pt-BR');
   const time = new Date().toLocaleTimeString('pt-BR');
 
@@ -477,11 +519,11 @@ export function generateDisqualifiedReportHTML(
       .map((c, idx) => `
     <tr>
       <td>${idx + 1}</td>
-      <td>${c.name}</td>
-      <td>${c.area}</td>
-      <td>${c.area === 'Administrativa' ? c.cargoAdministrativo : c.cargoAssistencial}</td>
-      <td>${c.cpf || '-'}</td>
-      <td>${c.registrationNumber}</td>
+      <td>${getCandidateName(c)}</td>
+      <td>${getCandidateArea(c)}</td>
+      <td>${getCandidateCargo(c)}</td>
+      <td>${getCandidateCPF(c) || '-'}</td>
+      <td>${getCandidateRegistration(c)}</td>
     </tr>
       `)
       .join('')}

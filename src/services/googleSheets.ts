@@ -179,5 +179,13 @@ export const googleSheetsService = {
 
   async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
     return makeRequest('saveScreening', screeningData);
+  },
+
+  async fetchCandidates(): Promise<any[]> {
+    const result = await makeRequest('getCandidates');
+    if (result.success && result.data) {
+      return result.data.candidates || result.data || [];
+    }
+    return [];
   }
 };
