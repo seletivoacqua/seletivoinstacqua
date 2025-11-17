@@ -17,8 +17,6 @@ interface Analyst {
 
 export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [loading, setLoading] = useState(false);
-  const [loadingAnalysts, setLoadingAnalysts] = useState(false);
-  const [loadingInterviewers, setLoadingInterviewers] = useState(false);
   const [analysts, setAnalysts] = useState<Analyst[]>([]);
   const [interviewers, setInterviewers] = useState<Analyst[]>([]);
   const [selectedAnalyst, setSelectedAnalyst] = useState<string>('todos');
@@ -33,8 +31,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   });
 
   useEffect(() => {
-    loadAnalysts();
-    loadInterviewers();
+    loadAnalystsAndInterviewers();
     loadStats();
   }, []);
 
@@ -44,56 +41,48 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }, [reportType, selectedAnalyst, selectedInterviewer]);
 
-  async function loadAnalysts() {
-    try {
-      setLoadingAnalysts(true);
-      console.log('🔄 Iniciando carregamento de analistas...');
+ async function loadAnalystsAndInterviewers() {
+  try {
+    setLoadingLists(true);
+    console.log('🔄 Iniciando carregamento de analistas e entrevistadores...');
 
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const analystsResult = await googleSheetsService.getAnalysts();
+    // Use o mesmo serviço que funciona no InterviewCandidatesList
+    const { googleSheetsService } = await import('../services/googleSheets');
 
-      console.log('📊 Resultado analistas:', analystsResult);
+    const [analystsResult, interviewersResult] = await Promise.all([
+      googleSheetsService.getAnalysts(),
+      googleSheetsService.getInterviewers()
+    ]);
 
-      if (analystsResult.success && Array.isArray(analystsResult.data)) {
-        setAnalysts(analystsResult.data);
-        console.log('✅ Analistas carregados:', analystsResult.data.length);
-      } else {
-        console.error('❌ Falha ao carregar analistas:', analystsResult);
-        setAnalysts([]);
-      }
-    } catch (error) {
-      console.error('❌ Erro ao carregar analistas:', error);
+    console.log('📊 Resultado analistas:', analystsResult);
+    console.log('🎤 Resultado entrevistadores:', interviewersResult);
+
+    // Processar analistas
+    if (analystsResult.success && Array.isArray(analystsResult.data)) {
+      setAnalysts(analystsResult.data);
+      console.log('✅ Analistas carregados:', analystsResult.data.length);
+    } else {
+      console.error('❌ Falha ao carregar analistas:', analystsResult);
       setAnalysts([]);
-    } finally {
-      setLoadingAnalysts(false);
     }
-  }
 
-  async function loadInterviewers() {
-    try {
-      setLoadingInterviewers(true);
-      console.log('🔄 Iniciando carregamento de entrevistadores...');
-
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const interviewersResult = await googleSheetsService.getInterviewers();
-
-      console.log('🎤 Resultado entrevistadores:', interviewersResult);
-
-      if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
-        setInterviewers(interviewersResult.data);
-        console.log('✅ Entrevistadores carregados:', interviewersResult.data.length);
-      } else {
-        console.error('❌ Falha ao carregar entrevistadores:', interviewersResult);
-        setInterviewers([]);
-      }
-    } catch (error) {
-      console.error('❌ Erro ao carregar entrevistadores:', error);
+    // Processar entrevistadores
+    if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
+      setInterviewers(interviewersResult.data);
+      console.log('✅ Entrevistadores carregados:', interviewersResult.data.length);
+    } else {
+      console.error('❌ Falha ao carregar entrevistadores:', interviewersResult);
       setInterviewers([]);
-    } finally {
-      setLoadingInterviewers(false);
     }
-  }
 
+  } catch (error) {
+    console.error('❌ Erro geral ao carregar analistas e entrevistadores:', error);
+    setAnalysts([]);
+    setInterviewers([]);
+  } finally {
+    setLoadingLists(false);
+  }
+}
   async function loadStats() {
     try {
       const { googleSheetsService } = await import('../services/googleSheets');
@@ -466,10 +455,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="todos">Todos os Analistas</option>
-                  {loadingAnalysts ? (
-                    <option disabled>Carregando analistas...</option>
-                  ) : analysts.length === 0 ? (
-                    <option disabled>Nenhum analista encontrado</option>
+                  {analysts.length === 0 ? (
+                    <option disabled>Carregando...</option>
                   ) : (
                     analysts.map((analyst) => (
                       <option key={analyst.id} value={analyst.id}>
@@ -492,10 +479,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="todos">Todos os Entrevistadores</option>
-                  {loadingInterviewers ? (
-                    <option disabled>Carregando entrevistadores...</option>
-                  ) : interviewers.length === 0 ? (
-                    <option disabled>Nenhum entrevistador encontrado</option>
+                  {interviewers.length === 0 ? (
+                    <option disabled>Carregando...</option>
                   ) : (
                     interviewers.map((interviewer) => (
                       <option key={interviewer.id} value={interviewer.id}>
