@@ -312,6 +312,7 @@ function getAnalysts(params) {
   }
 }
 
+
 // ============================================
 // FUNÇÕES DE CANDIDATOS
 // ============================================
@@ -558,17 +559,28 @@ function initTemplatesSheet() {
     sheet.getRange('A1:E1').setValues([['ID', 'Nome', 'Tipo', 'Assunto', 'Conteúdo']]);
 
     const templates = [
-      ['T001', 'Classificado - Email', 'email', 'Processo Seletivo - Você foi classificado!',
-       'Prezado(a) [NOME],\n\nParabéns! Você foi classificado(a) no processo seletivo para a vaga de [CARGO] na área [AREA].\n\nEm breve entraremos em contato com informações sobre as próximas etapas do processo.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção'],
+      ['T001', 'Classificado - Email', 'email', 'Atualização do Processo Seletivo - Classificação',
+       'Prezado(a) [NOME],\n\nTemos o prazer de informar que seu perfil foi classificado no processo seletivo para a vaga de [CARGO] na área de [AREA].\n\nNossa equipe entrará em contato em breve para dar continuidade ao processo.\n\nAgradecemos seu interesse e desejamos sucesso nesta etapa.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.'],
+      
       ['T002', 'Classificado - SMS', 'sms', '',
-       'Parabéns [NOME]! Você foi classificado no processo seletivo para [CARGO]. Aguarde contato para próximas etapas.'],
-      ['T003', 'Desclassificado - Email', 'email', 'Processo Seletivo - Resultado da Análise',
-       'Prezado(a) [NOME],\n\nAgradecemos seu interesse em fazer parte da nossa equipe.\n\nInfelizmente, nesta etapa do processo seletivo, seu perfil não foi selecionado para a vaga de [CARGO].\n\nDesejamos muito sucesso em sua jornada profissional.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção'],
+       'Olá [NOME]! Seu perfil foi classificado no processo para [CARGO]. Aguarde nosso contato para próximos passos.'],
+      
+      ['T003', 'Desclassificado - Email', 'email', 'Atualização do Processo Seletivo',
+       'Prezado(a) [NOME],\n\nAgradecemos sinceramente seu interesse em fazer parte de nossa equipe e pelo tempo dedicado ao processo seletivo para a vaga de [CARGO].\n\nInformamos que, após análise criteriosa, seu perfil não foi selecionado para prosseguir nesta oportunidade.\n\nSeu currículo permanecerá em nosso banco de dados para futuras oportunidades compatíveis com seu perfil.\n\nDesejamos sucesso em sua jornada profissional.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.'],
+      
       ['T004', 'Em Revisão - Email', 'email', 'Processo Seletivo - Análise em Andamento',
-       'Prezado(a) [NOME],\n\nSeu cadastro para a vaga de [CARGO] está sendo revisado pela nossa equipe de análise.\n\nEm breve daremos retorno sobre o andamento do seu processo seletivo.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção']
+       'Prezado(a) [NOME],\n\nConfirmamos o recebimento de sua inscrição para a vaga de [CARGO].\n\nSeu cadastro está atualmente em análise por nossa equipe de recrutamento. O processo de triagem está em andamento e todas as inscrições estão sendo cuidadosamente avaliadas.\n\nVocê receberá uma atualização sobre o status assim que a análise for concluída.\n\nAgradecemos sua paciência e interesse em nossa organização.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.'],
+      
+      // ✅ NOVO TEMPLATE: Mais profissional e menos "spam"
+      ['T005', 'Convite para Entrevista - Email', 'email', 'Convite para Próxima Etapa do Processo Seletivo',
+       'Prezado(a) [NOME],\n\nÉ com satisfação que convidamos você para a próxima etapa do processo seletivo para a vaga de [CARGO].\n\nSeu perfil foi selecionado entre diversos candidatos e gostaríamos de conhecê-lo(a) melhor.\n\nNossa equipe entrará em contato em breve para agendar a entrevista e fornecer todos os detalhes.\n\nContamos com sua participação!\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.']
     ];
 
     sheet.getRange(2, 1, templates.length, 5).setValues(templates);
+    
+    // Formatar a planilha para melhor visualização
+    sheet.autoResizeColumns(1, 5);
+    sheet.getRange('A1:E1').setFontWeight('bold').setBackground('#f3f3f3');
   }
 
   return sheet;
@@ -674,72 +686,84 @@ function _sendSmsTwilio_(to, body){
 }
 
 
+// ============================================
+// FUNÇÕES DE ENVIO DE EMAIL - CORRIGIDAS
+// ============================================
+
 function _sendEmailGmail_(to, subject, body, alias) {
   try {
     Logger.log('📧 Enviando email para: ' + to);
-    Logger.log('👤 Alias configurado: ' + (alias || 'Usuário principal'));
+    Logger.log('👤 Alias solicitado: ' + (alias || 'Email principal'));
     
-    const options = {};
+    const options = {
+      htmlBody: body,
+      noReply: false,
+      // ✅ NOME PERSONALIZADO NO CABEÇALHO:
+      name: 'Processo Seletivo Instituto Acqua',
+      replyTo: Session.getActiveUser().getEmail()
+    };
     
-    // ✅ CORREÇÃO: Para aliases no GmailApp, usar a sintaxe correta
+    // ✅ USA SUA FUNÇÃO myFunction() para verificar aliases
+    const aliasCheck = myFunction();
+    const aliases = aliasCheck.aliases;
+    
+    // Lógica para definir o alias correto
+    let finalAlias = null;
+    
     if (alias) {
-      // Verificar se o alias é válido e pertence ao usuário
-      const aliases = GmailApp.getAliases();
-      Logger.log('📋 Aliases disponíveis: ' + aliases.join(', '));
-      
       if (aliases.includes(alias)) {
-        // ✅ FORMA CORRETA: Usar o alias diretamente no from
-        options.from = alias;
-        Logger.log('✅ Usando alias válido: ' + alias);
+        finalAlias = alias;
+        Logger.log('✅ Usando alias solicitado: ' + alias);
       } else {
-        Logger.log('⚠️ Alias não encontrado ou não pertence ao usuário: ' + alias);
-        Logger.log('📋 Aliases disponíveis: ' + aliases.join(', '));
-        
-        // Tentar encontrar um alias similar ou usar o primeiro disponível
-        const availableAlias = aliases.length > 0 ? aliases[0] : null;
-        if (availableAlias) {
-          options.from = availableAlias;
-          Logger.log('🔄 Usando alias alternativo: ' + availableAlias);
-        } else {
-          Logger.log('ℹ️ Nenhum alias disponível, enviando do email principal');
-        }
+        Logger.log('⚠️ Alias solicitado não encontrado: ' + alias);
       }
     }
     
-    // ✅ Adicionar opções adicionais para melhor formatação
-    options.htmlBody = body; // Se quiser suporte a HTML
-    options.noReply = false;
+    if (!finalAlias && aliases.length > 0) {
+      finalAlias = aliases[0];
+      Logger.log('🔄 Usando primeiro alias disponível: ' + aliases[0]);
+    }
     
-    Logger.log('⚙️ Opções de envio:', JSON.stringify(options));
+    // ✅ ATUALIZA as opções com o alias final
+    if (finalAlias) {
+      options.from = finalAlias;
+      options.replyTo = finalAlias;
+    }
     
-    // Enviar email
-    const message = GmailApp.sendEmail(to, subject, body, options);
-    Logger.log('✅ Email enviado com ID: ' + message.getId());
+    Logger.log('⚙️ Opções de envio: ' + JSON.stringify(options));
+    
+    // ✅ ENVIAR EMAIL
+    GmailApp.sendEmail(to, subject, body, options);
+    
+    Logger.log('✅ Email enviado com sucesso');
+    Logger.log('   De: Processo Seletivo Instituto Acqua');
+    Logger.log('   Email: ' + (options.from || Session.getActiveUser().getEmail()));
     
     return { 
-      ok: true, 
-      messageId: message.getId(),
-      from: options.from || Session.getActiveUser().getEmail()
+      ok: true,
+      from: options.from || Session.getActiveUser().getEmail(),
+      displayName: 'Processo Seletivo Instituto Acqua',
+      aliasUsed: !!finalAlias
     };
     
   } catch (e) {
     Logger.log('❌ Erro ao enviar email: ' + e.toString());
     
-    // ✅ Tentar fallback sem alias em caso de erro
-    if (alias) {
-      Logger.log('🔄 Tentando fallback sem alias...');
-      try {
-        const message = GmailApp.sendEmail(to, subject, body);
-        Logger.log('✅ Email enviado sem alias');
-        return { 
-          ok: true, 
-          messageId: message.getId(),
-          from: Session.getActiveUser().getEmail(),
-          fallback: true
-        };
-      } catch (fallbackError) {
-        Logger.log('❌ Fallback também falhou: ' + fallbackError.toString());
-      }
+    // ✅ FALLBACK mantendo o nome personalizado
+    try {
+      Logger.log('🔄 Tentando fallback simplificado...');
+      GmailApp.sendEmail(to, subject, body, {
+        name: 'Processo Seletivo Instituto Acqua'
+      });
+      Logger.log('✅ Email enviado via fallback');
+      return { 
+        ok: true,
+        from: Session.getActiveUser().getEmail(),
+        displayName: 'Processo Seletivo Instituto Acqua',
+        fallback: true
+      };
+    } catch (fallbackError) {
+      Logger.log('❌ Fallback também falhou: ' + fallbackError.toString());
     }
     
     return { 
@@ -749,95 +773,185 @@ function _sendEmailGmail_(to, subject, body, alias) {
   }
 }
 
+// ============================================
+// FUNÇÕES DE ENVIO DE SMS - CORRIGIDAS
+// ============================================
+
+function _sendSmsTwilio_(to, body) {
+  try {
+    // ✅ Verificar se Twilio está configurado
+    if (!_twilioEnabled_()) {
+      Logger.log('⚠️ Twilio não configurado - SMS desabilitado');
+      return { 
+        ok: false, 
+        skipped: true, 
+        error: 'Twilio não configurado. Verifique as variáveis TWILIO_SID, TWILIO_TOKEN e TWILIO_FROM.' 
+      };
+    }
+
+    // ✅ Validação do número de telefone
+    if (!to) {
+      throw new Error('Número de telefone é obrigatório');
+    }
+
+    const formattedTo = _formatE164_(to);
+    
+    // ✅ Validação adicional da formatação
+    if (!formattedTo.startsWith('+55') || formattedTo.length < 13) {
+      throw new Error('Número de telefone brasileiro inválido: ' + formattedTo);
+    }
+
+    Logger.log('📱 Enviando SMS para: ' + formattedTo);
+    Logger.log('📝 Conteúdo: ' + body.substring(0, 50) + '...');
+
+    const sid = _getProp_('TWILIO_SID');
+    const token = _getProp_('TWILIO_TOKEN');
+    const from = _getProp_('TWILIO_FROM');
+
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
+    
+    const payload = {
+      To: formattedTo,
+      From: from,
+      Body: body
+    };
+
+    const options = {
+      method: 'POST',
+      payload: payload,
+      muteHttpExceptions: true,
+      headers: {
+        Authorization: 'Basic ' + Utilities.base64Encode(sid + ':' + token),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 30000 // 30 segundos timeout
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    Logger.log('📡 Resposta Twilio - Código: ' + responseCode);
+
+    if (responseCode >= 200 && responseCode < 300) {
+      const responseData = JSON.parse(responseText);
+      Logger.log('✅ SMS enviado com sucesso - SID: ' + responseData.sid);
+      return { 
+        ok: true, 
+        sid: responseData.sid,
+        status: responseData.status
+      };
+    } else {
+      Logger.log('❌ Erro Twilio: ' + responseText);
+      let errorMessage = `Twilio HTTP ${responseCode}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage += ` - ${errorData.message || errorData.code || 'Erro desconhecido'}`;
+      } catch (e) {
+        errorMessage += ` - ${responseText.substring(0, 100)}`;
+      }
+      return { 
+        ok: false, 
+        error: errorMessage,
+        responseCode: responseCode
+      };
+    }
+
+  } catch (error) {
+    Logger.log('❌ Erro crítico ao enviar SMS: ' + error.toString());
+    Logger.log('📞 Stack: ' + error.stack);
+    
+    return { 
+      ok: false, 
+      error: 'Erro de conexão: ' + error.toString()
+    };
+  }
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES MELHORADAS
+// ============================================
+
+function _formatE164_(phone) {
+  if (!phone) return '';
+  
+  try {
+    // Remover tudo que não é dígito
+    let cleaned = String(phone).replace(/\D/g, '');
+    
+    // Remover zeros à esquerda
+    cleaned = cleaned.replace(/^0+/, '');
+    
+    // Verificar se já tem DDI
+    if (!cleaned.startsWith('55')) {
+      cleaned = '55' + cleaned;
+    }
+    
+    // Validar comprimento mínimo (55 + DDD + número)
+    if (cleaned.length < 12) {
+      throw new Error('Número muito curto: ' + cleaned);
+    }
+    
+    // Validar comprimento máximo
+    if (cleaned.length > 13) {
+      // Número com nono dígito - manter apenas 13 caracteres
+      cleaned = cleaned.substring(0, 13);
+    }
+    
+    return '+' + cleaned;
+    
+  } catch (error) {
+    Logger.log('❌ Erro ao formatar telefone: ' + error.toString());
+    return '';
+  }
+}
+
+function _pickEmailFromRow_(headers, row) {
+  const colMap = _colMap_(headers);
+  
+  // Tentar diferentes colunas de email
+  const emailColumns = ['EMAIL', 'EMAIL1', 'EMAIL2', 'E_MAIL', 'E-MAIL'];
+  
+  for (const colName of emailColumns) {
+    if (colMap[colName] >= 0) {
+      const email = String(row[colMap[colName]]).trim();
+      if (email && email.includes('@')) {
+        Logger.log('📧 Email encontrado na coluna ' + colName + ': ' + email);
+        return email;
+      }
+    }
+  }
+  
+  Logger.log('⚠️ Nenhum email válido encontrado para o candidato');
+  return null;
+}
+
+function _pickPhoneFromRow_(headers, row) {
+  const colMap = _colMap_(headers);
+  
+  // Tentar diferentes colunas de telefone
+  const phoneColumns = ['TELEFONE', 'CELULAR', 'PHONE', 'TELEFONE1', 'CELULAR1'];
+  
+  for (const colName of phoneColumns) {
+    if (colMap[colName] >= 0) {
+      const phone = String(row[colMap[colName]]).trim();
+      if (phone && phone.replace(/\D/g, '').length >= 10) {
+        Logger.log('📱 Telefone encontrado na coluna ' + colName + ': ' + phone);
+        return phone;
+      }
+    }
+  }
+  
+  Logger.log('⚠️ Nenhum telefone válido encontrado para o candidato');
+  return null;
+}
+
 function _applyTemplate_(text, candidate){
   if (!text) return '';
   return String(text)
     .replace(/\[NOME\]/g, candidate.NOMECOMPLETO || candidate.NOMESOCIAL || '')
     .replace(/\[CARGO\]/g, candidate.CARGOPRETENDIDO || '')
     .replace(/\[AREA\]/g, candidate.AREAATUACAO || '');
-}
-
-function _pickEmailFromRow_(headers, rowValues) {
-  const col = _colMap_(headers);
-
-  // Tentar colunas comuns de email
-  const emailColumns = ['EMAIL', 'E-MAIL', 'EMAILPRINCIPAL', 'Email', 'E-mail'];
-
-  for (let i = 0; i < emailColumns.length; i++) {
-    const colName = emailColumns[i];
-    const colIndex = col[colName];
-    if (colIndex !== undefined && colIndex >= 0) {
-      const email = rowValues[colIndex];
-      if (email && String(email).includes('@')) {
-        return String(email).trim();
-      }
-    }
-  }
-
-  // Se não encontrou, procurar qualquer coluna que contenha "email" no nome
-  for (let i = 0; i < headers.length; i++) {
-    const headerName = String(headers[i]).toLowerCase();
-    if (headerName.includes('email') || headerName.includes('e-mail')) {
-      const email = rowValues[i];
-      if (email && String(email).includes('@')) {
-        return String(email).trim();
-      }
-    }
-  }
-
-  Logger.log('⚠️ Email não encontrado na linha');
-  return null;
-}
-
-function _pickPhoneFromRow_(headers, rowValues) {
-  const col = _colMap_(headers);
-
-  // Tentar colunas comuns de telefone
-  const phoneColumns = [
-    'TELEFONE',
-    'CELULAR',
-    'TELEFONEPRINCIPAL',
-    'TELEFONECELULAR',
-    'Telefone',
-    'Celular',
-    'WHATSAPP',
-    'WhatsApp'
-  ];
-
-  for (let i = 0; i < phoneColumns.length; i++) {
-    const colName = phoneColumns[i];
-    const colIndex = col[colName];
-    if (colIndex !== undefined && colIndex >= 0) {
-      const phone = rowValues[colIndex];
-      if (phone) {
-        const phoneStr = String(phone).replace(/\D/g, '');
-        // Verificar se tem pelo menos 10 dígitos (telefone válido)
-        if (phoneStr.length >= 10) {
-          return phoneStr;
-        }
-      }
-    }
-  }
-
-  // Se não encontrou, procurar qualquer coluna que contenha "telefone" ou "celular" no nome
-  for (let i = 0; i < headers.length; i++) {
-    const headerName = String(headers[i]).toLowerCase();
-    if (headerName.includes('telefone') ||
-        headerName.includes('celular') ||
-        headerName.includes('whatsapp') ||
-        headerName.includes('fone')) {
-      const phone = rowValues[i];
-      if (phone) {
-        const phoneStr = String(phone).replace(/\D/g, '');
-        if (phoneStr.length >= 10) {
-          return phoneStr;
-        }
-      }
-    }
-  }
-
-  Logger.log('⚠️ Telefone não encontrado na linha');
-  return null;
 }
 
 function sendMessages(params) {
@@ -1642,11 +1756,11 @@ function getReport(params) {
   try {
     const reportType = params.reportType;
     const analystEmail = params.analystEmail;
+    const interviewerEmail = params.interviewerEmail;
 
     Logger.log('📋 Gerando relatório: ' + reportType);
-    if (analystEmail) {
-      Logger.log('   - Filtro por analista: ' + analystEmail);
-    }
+    if (analystEmail) Logger.log('   - Filtro por analista: ' + analystEmail);
+    if (interviewerEmail) Logger.log('   - Filtro por entrevistador: ' + interviewerEmail);
 
     const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
     if (!sheet || !values.length) {
@@ -1659,6 +1773,7 @@ function getReport(params) {
     const analistaCol = col['Analista'];
     const statusEntrevistaCol = col['status_entrevista'];
     const interviewResultCol = col['interview_result'];
+    const entrevistadorCol = col['entrevistador'];
 
     const candidates = [];
 
@@ -1667,8 +1782,15 @@ function getReport(params) {
       const analista = values[i][analistaCol] ? String(values[i][analistaCol]).toLowerCase().trim() : '';
       const statusEntrevista = values[i][statusEntrevistaCol] ? String(values[i][statusEntrevistaCol]).trim() : '';
       const interviewResult = values[i][interviewResultCol] ? String(values[i][interviewResultCol]).trim() : '';
+      const entrevistador = values[i][entrevistadorCol] ? String(values[i][entrevistadorCol]).toLowerCase().trim() : '';
 
+      // Aplicar filtro por analista, se fornecido
       if (analystEmail && analista !== analystEmail.toLowerCase().trim()) {
+        continue;
+      }
+
+      // Aplicar filtro por entrevistador, se fornecido
+      if (interviewerEmail && entrevistador !== interviewerEmail.toLowerCase().trim()) {
         continue;
       }
 
@@ -1701,9 +1823,7 @@ function getReport(params) {
   }
 }
 
-// ============================================
-// FUNÇÃO DE TRIAGEM
-// ============================================
+
 
 function saveScreening(params) {
   try {
@@ -1714,19 +1834,19 @@ function saveScreening(params) {
     const sh = _sheet(SHEET_CANDIDATOS);
     const headers = _getHeaders_(sh);
     const col = _colMap_(headers);
-
-    const cpfCol = col['CPF'];
     const statusCol = col['Status'];
     const analistaCol = col['Analista'];
     const dataTriagemCol = col['Data Triagem'];
+    const checkRgCpfCol = col['checkrg-cpf'];
+    const checkCnhCol = col['check-cnh'];
+    const checkExperienciaCol = col['check-experiencia'];
+    const checkRegularidadeCol = col['check-regularidade'];
+    const checkLaudoCol = col['check-laudo'];
+    const checkCurriculoCol = col['check-curriculo'];
     const observacoesCol = col['Observações'];
-    const motivoDesclassificacaoCol = col['Motivo Desclassificação'];
-    const capacidadeTecnicaCol = col['capacidade_tecnica'];
-    const experienciaCol = col['experiencia'];
-    const pontuacaoTriagemCol = col['pontuacao_triagem'];
 
     const idx = _getIndex_(sh, headers);
-    const searchKey = String(params.candidateId || params.registrationNumber || params.CPF).trim();
+    const searchKey = String(params.candidateId || params.registrationNumber || params.cpf).trim();
     let row = idx[searchKey];
 
     if (!row) {
@@ -1758,39 +1878,46 @@ function saveScreening(params) {
       rowVals[dataTriagemCol] = params.screenedAt || getCurrentTimestamp();
     }
 
+    // Novos campos de verificação - USE COLCHETES para acessar propriedades com hífens
+    if (checkRgCpfCol >= 0 && params['checkrg-cpf'] !== undefined) {
+      rowVals[checkRgCpfCol] = params['checkrg-cpf'];
+    }
+
+    if (checkCnhCol >= 0 && params['check-cnh'] !== undefined) {
+      rowVals[checkCnhCol] = params['check-cnh'];
+    }
+
+    if (checkExperienciaCol >= 0 && params['check-experiencia'] !== undefined) {
+      rowVals[checkExperienciaCol] = params['check-experiencia'];
+    }
+
+    if (checkRegularidadeCol >= 0 && params['check-regularidade'] !== undefined) {
+      rowVals[checkRegularidadeCol] = params['check-regularidade'];
+    }
+
+    if (checkLaudoCol >= 0 && params['check-laudo'] !== undefined) {
+      rowVals[checkLaudoCol] = params['check-laudo'];
+    }
+
+    if (checkCurriculoCol >= 0 && params['check-curriculo'] !== undefined) {
+      rowVals[checkCurriculoCol] = params['check-curriculo'];
+    }
+
     if (observacoesCol >= 0 && params.notes) {
       rowVals[observacoesCol] = params.notes;
-    }
-
-    if (motivoDesclassificacaoCol >= 0 && params.disqualification_reason) {
-      rowVals[motivoDesclassificacaoCol] = params.disqualification_reason;
-      Logger.log('📝 Salvando motivo de desclassificação: ' + params.disqualification_reason);
-    }
-
-    if (capacidadeTecnicaCol >= 0 && params.capacidade_tecnica !== undefined) {
-      rowVals[capacidadeTecnicaCol] = params.capacidade_tecnica;
-    }
-
-    if (experienciaCol >= 0 && params.experiencia !== undefined) {
-      rowVals[experienciaCol] = params.experiencia;
-    }
-
-    if (pontuacaoTriagemCol >= 0 && params.total_score !== undefined) {
-      rowVals[pontuacaoTriagemCol] = params.total_score;
     }
 
     _writeWholeRow_(sh, row, rowVals);
     _bumpRev_();
 
     Logger.log('✅ Triagem salva com sucesso');
-    Logger.log('   - Status: ' + (params.status === 'classificado' ? 'Classificado' : 'Desclassificado'));
-    Logger.log('   - Pontuação: ' + (params.total_score || 0));
+    Logger.log('   - Status: ' + rowVals[statusCol]);
 
     return {
       success: true,
       message: 'Triagem salva com sucesso',
       candidateId: searchKey,
-      status: params.status
+      status: rowVals[statusCol]
     };
   } catch (error) {
     Logger.log('❌ Erro em saveScreening: ' + error.toString());
