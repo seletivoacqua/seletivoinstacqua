@@ -50,11 +50,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         getInterviewers()
       ]);
 
+      console.log('📊 Analistas carregados:', analystsList);
+      console.log('🎤 Entrevistadores carregados:', interviewersList);
+
       setAnalysts(analystsList);
       setInterviewers(interviewersList);
 
-      console.log('📊 Analistas carregados:', analystsList.length);
-      console.log('🎤 Entrevistadores carregados:', interviewersList.length);
+      console.log('✅ States atualizados - Analistas:', analystsList.length, 'Entrevistadores:', interviewersList.length);
     } catch (error) {
       console.error('Erro ao carregar analistas e entrevistadores:', error);
     }
@@ -423,36 +425,48 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
             {shouldShowAnalystFilter() && (
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Analista</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Analista {analysts.length > 0 && `(${analysts.length})`}
+                </label>
                 <select
                   value={selectedAnalyst}
                   onChange={(e) => setSelectedAnalyst(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="todos">Todos os Analistas</option>
-                  {analysts.map((analyst) => (
-                    <option key={analyst.id} value={analyst.id}>
-                      {analyst.name}
-                    </option>
-                  ))}
+                  {analysts.length === 0 ? (
+                    <option disabled>Carregando...</option>
+                  ) : (
+                    analysts.map((analyst) => (
+                      <option key={analyst.id} value={analyst.id}>
+                        {analyst.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             )}
 
             {shouldShowInterviewerFilter() && (
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Entrevistador</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Entrevistador {interviewers.length > 0 && `(${interviewers.length})`}
+                </label>
                 <select
                   value={selectedInterviewer}
                   onChange={(e) => setSelectedInterviewer(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="todos">Todos os Entrevistadores</option>
-                  {interviewers.map((interviewer) => (
-                    <option key={interviewer.id} value={interviewer.id}>
-                      {interviewer.name}
-                    </option>
-                  ))}
+                  {interviewers.length === 0 ? (
+                    <option disabled>Carregando...</option>
+                  ) : (
+                    interviewers.map((interviewer) => (
+                      <option key={interviewer.id} value={interviewer.id}>
+                        {interviewer.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             )}
