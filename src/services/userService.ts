@@ -20,21 +20,45 @@ class GoogleSheetsService {
         throw new Error('URL do Google Script não configurada. Verifique o arquivo .env');
       }
 
-      // Construir URL com query parameters para evitar preflight CORS
-      const params = new URLSearchParams({ action, ...data });
-      const url = `${this.scriptUrl}?${params.toString()}`;
-
       console.log('🔄 [UserService] Chamando Google Apps Script:', action);
-      console.log('📦 [UserService] URL:', url);
       console.log('📦 [UserService] Data:', data);
 
-      const response = await fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+      // Calcular tamanho estimado da URL
+      const params = new URLSearchParams({ action, ...data });
+      const urlSize = this.scriptUrl.length + params.toString().length;
+      const usePost = urlSize > 2000; // URLs maiores que 2KB usam POST
+
+      let response: Response;
+
+      if (usePost) {
+        // POST para dados grandes (evita URL muito longa)
+        console.log('📮 [UserService] Usando POST (dados grandes)');
+
+        response = await fetch(this.scriptUrl, {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            action,
+            ...data
+          })
+        });
+      } else {
+        // GET para dados pequenos (evita preflight CORS)
+        console.log('📥 [UserService] Usando GET (dados pequenos)');
+        const url = `${this.scriptUrl}?${params.toString()}`;
+
+        response = await fetch(url, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+      }
 
       console.log('📡 [UserService] Resposta recebida - Status:', response.status);
 
