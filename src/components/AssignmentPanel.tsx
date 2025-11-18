@@ -91,13 +91,8 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     setSelectedCandidates(newSelection);
   }
 
-  function selectAll() {
-    if (selectedCandidates.size === unassignedCandidates.length) {
-      setSelectedCandidates(new Set());
-    } else {
-      setSelectedCandidates(new Set(unassignedCandidates.map(c => c.id)));
-    }
-  }
+  // ✅ CORREÇÃO: Removida a função selectAll() que selecionava todos
+  // Agora apenas seleção individual é permitida
 
   async function handleAssign() {
     if (!selectedAnalyst || selectedCandidates.size === 0) {
@@ -117,7 +112,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       setSelectedAnalyst('');
       await loadUnassignedCandidates();
       onAssignmentComplete();
-      alert('Candidatos alocados com sucesso!');
+      alert(`${selectedCandidates.size} candidato(s) alocado(s) com sucesso para o analista!`);
     } catch (error) {
       console.error('Erro ao alocar candidatos:', error);
       alert('Erro ao alocar candidatos');
@@ -178,12 +173,10 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               <h3 className="text-lg font-semibold text-gray-800">
                 Candidatos Não Alocados ({unassignedCandidates.length})
               </h3>
-              <button
-                onClick={selectAll}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                {selectedCandidates.size === unassignedCandidates.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-              </button>
+              {/* ✅ REMOVIDO: Botão "Selecionar Todos" */}
+              <div className="text-sm text-gray-500">
+                Selecione individualmente os candidatos
+              </div>
             </div>
 
             {loading ? (
@@ -212,12 +205,25 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                         checked={selectedCandidates.has(candidate.id)}
                         onChange={() => toggleCandidate(candidate.id)}
                         className="mt-1"
+                        // ✅ Agora cada checkbox é independente
                       />
                       <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{candidate.name}</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          CPF: {candidate.registration_number} • Área: {candidate.AREAATUACAO}
+                        <div className="font-semibold text-gray-800">
+                          {candidate.NOMECOMPLETO || candidate.name}
                         </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          CPF: {candidate.CPF || candidate.registration_number} • 
+                          Área: {candidate.AREAATUACAO || 'Não informada'}
+                        </div>
+                        {/* ✅ ADICIONADO: Exibição dos cargos atualizados */}
+                        {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Cargos: 
+                            {candidate.CARGOADMIN && ` Admin: ${candidate.CARGOADMIN}`}
+                            {candidate.CARGOADMIN && candidate.CARGOASSIS && ' | '}
+                            {candidate.CARGOASSIS && ` Assis: ${candidate.CARGOASSIS}`}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -282,8 +288,13 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
 
                 <div className="pt-2">
                   <div className="text-sm text-gray-600 mb-2">
-                    Selecionados: <span className="font-semibold">{selectedCandidates.size}</span>
+                    Candidatos selecionados: <span className="font-semibold text-blue-600">{selectedCandidates.size}</span>
                   </div>
+                  {selectedCandidates.size > 0 && (
+                    <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                      ✅ {selectedCandidates.size} candidato(s) pronto(s) para alocação
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -298,7 +309,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                     </>
                   ) : (
                     <>
-                      Alocar Candidatos
+                      Alocar {selectedCandidates.size} Candidato(s)
                       <ChevronRight className="w-5 h-5" />
                     </>
                   )}
@@ -315,7 +326,12 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               ) : (
                 <div className="space-y-2">
                   {analysts.map(analyst => (
-                    <div key={analyst.id} className="flex justify-between items-center text-sm">
+                    <div 
+                      key={analyst.id} 
+                      className={`flex justify-between items-center text-sm p-2 rounded ${
+                        selectedAnalyst === analyst.id ? 'bg-blue-100 border border-blue-200' : ''
+                      }`}
+                    >
                       <span className="text-gray-700">{analyst.name}</span>
                       <span className="font-semibold text-gray-900">
                         {analystWorkload[analyst.id] || 0} candidatos
