@@ -21,6 +21,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    console.log('🔄 AssignmentPanel - Iniciando carregamento');
     loadAnalysts();
     loadUnassignedCandidates();
   }, [page]);
@@ -29,10 +30,15 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     try {
       setLoadingAnalysts(true);
       setError('');
+      console.log('📋 Carregando analistas...');
+      
       const data = await getAnalysts();
+      console.log('✅ Analistas carregados:', data);
+      
       setAnalysts(data);
     } catch (error) {
-      setError('Erro ao carregar analistas.');
+      console.error('❌ Erro ao carregar analistas:', error);
+      setError('Erro ao carregar lista de analistas. Tente novamente.');
       setAnalysts([]);
     } finally {
       setLoadingAnalysts(false);
@@ -42,11 +48,17 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
   async function loadUnassignedCandidates() {
     try {
       setLoading(true);
+      console.log('📋 Carregando candidatos não alocados...');
+      
       const response = await candidateService.getUnassignedCandidates(page, 50);
-      setUnassignedCandidates(response.data);
-      setTotalPages(response.totalPages);
+      console.log('✅ Candidatos carregados:', response);
+      
+      setUnassignedCandidates(response.data || []);
+      setTotalPages(response.totalPages || 1);
     } catch (error) {
+      console.error('❌ Erro ao carregar candidatos:', error);
       setError('Erro ao carregar candidatos não alocados.');
+      setUnassignedCandidates([]);
     } finally {
       setLoading(false);
     }
@@ -60,6 +72,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       } else {
         newSet.add(candidateId);
       }
+      console.log('🎯 Candidato selecionado:', candidateId, 'Total:', newSet.size);
       return newSet;
     });
   };
@@ -67,9 +80,11 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
   const handleSelectAll = () => {
     if (selectedCandidates.size === unassignedCandidates.length) {
       setSelectedCandidates(new Set());
+      console.log('🎯 Todos desmarcados');
     } else {
       const allIds = unassignedCandidates.map(c => c.id);
       setSelectedCandidates(new Set(allIds));
+      console.log('🎯 Todos selecionados:', allIds.length);
     }
   };
 
@@ -81,18 +96,27 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
 
     try {
       setLoading(true);
+      console.log('📤 Alocando candidatos:', {
+        candidateIds: Array.from(selectedCandidates),
+        analystId: selectedAnalyst,
+        adminId
+      });
+      
       await assignCandidates({
         candidateIds: Array.from(selectedCandidates),
         analystId: selectedAnalyst,
         adminId,
       });
 
+      console.log('✅ Candidatos alocados com sucesso');
+      
       setSelectedCandidates(new Set());
       setSelectedAnalyst('');
       await loadUnassignedCandidates();
       onAssignmentComplete();
       alert(`${selectedCandidates.size} candidato(s) alocado(s) com sucesso!`);
     } catch (error) {
+      console.error('❌ Erro ao alocar candidatos:', error);
       alert('Erro ao alocar candidatos');
     } finally {
       setLoading(false);
@@ -112,14 +136,24 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               Atribua candidatos para os analistas realizarem a triagem
             </p>
           </div>
-          <button 
-            onClick={loadAnalysts} 
-            disabled={loadingAnalysts} 
-            className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingAnalysts ? 'animate-spin' : ''}`} />
-            Recarregar Analistas
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={loadAnalysts} 
+              disabled={loadingAnalysts} 
+              className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingAnalysts ? 'animate-spin' : ''}`} />
+              Recarregar Analistas
+            </button>
+            <button 
+              onClick={loadUnassignedCandidates} 
+              disabled={loading} 
+              className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Recarregar Candidatos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -139,18 +173,31 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               <h3 className="text-lg font-semibold text-gray-800">
                 Candidatos Não Alocados ({unassignedCandidates.length})
               </h3>
-              <button onClick={handleSelectAll} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                {selectedCandidates.size === unassignedCandidates.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-              </button>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-600">
+                  Selecionados: <span className="font-semibold text-blue-600">{selectedCandidates.size}</span>
+                </span>
+                <button onClick={handleSelectAll} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                  {selectedCandidates.size === unassignedCandidates.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                </button>
+              </div>
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <p className="text-gray-500 mt-2">Carregando candidatos...</p>
               </div>
             ) : unassignedCandidates.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">Nenhum candidato não alocado encontrado</p>
+                <button 
+                  onClick={loadUnassignedCandidates}
+                  className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Tentar novamente
+                </button>
               </div>
             ) : (
               <div className="space-y-2">
@@ -160,7 +207,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                     className={`p-4 rounded-lg border-2 transition-all ${
                       selectedCandidates.has(candidate.id)
                         ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -168,7 +215,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                         type="checkbox"
                         checked={selectedCandidates.has(candidate.id)}
                         onChange={() => handleCandidateSelect(candidate.id)}
-                        className="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        className="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                       />
                       <div className="flex-1">
                         <div className="font-semibold text-gray-800">
@@ -197,7 +244,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 <button 
                   onClick={() => setPage(p => Math.max(1, p - 1))} 
                   disabled={page === 1} 
-                  className="px-4 py-2 border rounded disabled:opacity-50"
+                  className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-50"
                 >
                   Anterior
                 </button>
@@ -205,7 +252,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 <button 
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
                   disabled={page === totalPages} 
-                  className="px-4 py-2 border rounded disabled:opacity-50"
+                  className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-50"
                 >
                   Próxima
                 </button>
@@ -219,20 +266,32 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Alocar para Analista</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Selecione o Analista</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecione o Analista
+                  </label>
                   {loadingAnalysts ? (
                     <div className="flex items-center gap-2 py-4 justify-center">
                       <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                      <span className="text-sm text-gray-600">Carregando...</span>
+                      <span className="text-sm text-gray-600">Carregando analistas...</span>
+                    </div>
+                  ) : analysts.length === 0 ? (
+                    <div className="text-center py-4">
+                      <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Nenhum analista disponível</p>
+                      <button 
+                        onClick={loadAnalysts}
+                        className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Recarregar
+                      </button>
                     </div>
                   ) : (
                     <select
                       value={selectedAnalyst}
                       onChange={(e) => setSelectedAnalyst(e.target.value)}
-                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      disabled={analysts.length === 0}
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="">{analysts.length === 0 ? 'Nenhum analista disponível' : 'Escolha um analista...'}</option>
+                      <option value="">Escolha um analista...</option>
                       {analysts.map(analyst => (
                         <option key={analyst.id} value={analyst.id}>
                           {analyst.name} ({analyst.role})
@@ -242,21 +301,42 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                   )}
                 </div>
 
-                <div className="text-sm text-gray-600">
-                  Selecionados: <span className="font-semibold text-blue-600">{selectedCandidates.size}</span>
-                </div>
-
                 <button
                   onClick={handleAssign}
                   disabled={!selectedAnalyst || selectedCandidates.size === 0 || loading}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium transition-colors"
                 >
                   {loading ? (
-                    <>Alocando...</>
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Alocando...
+                    </>
                   ) : (
-                    <>Alocar {selectedCandidates.size} Candidato(s) <ChevronRight className="w-5 h-5" /></>
+                    <>
+                      Alocar {selectedCandidates.size} Candidato(s) 
+                      <ChevronRight className="w-5 h-5" />
+                    </>
                   )}
                 </button>
+              </div>
+            </div>
+
+            {/* Informações do Sistema */}
+            <div className="bg-gray-50 border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-800 mb-3">Informações do Sistema</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Analistas carregados:</span>
+                  <span className="font-semibold">{analysts.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Candidatos carregados:</span>
+                  <span className="font-semibold">{unassignedCandidates.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Página atual:</span>
+                  <span className="font-semibold">{page} de {totalPages}</span>
+                </div>
               </div>
             </div>
           </div>
