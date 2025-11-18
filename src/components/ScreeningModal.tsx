@@ -65,22 +65,22 @@ export default function ScreeningModal({
   const [notes, setNotes] = useState('');
 
   // Função para enviar a triagem
-  const submitScreening = async () => {
+  const submitScreening = async (classificationStatus: 'classificado' | 'desclassificado') => {
     setLoading(true);
     
     try {
       // Preparar os dados para envio
       const screeningData = {
         candidate_id: candidate.id,
-        status: classification === 'classificado' ? 'Classificado' : 'Desclassificado',
+        status: classificationStatus === 'classificado' ? 'Classificado' : 'Desclassificado',
         documents: documents.reduce((acc, doc) => {
           acc[doc.key] = doc.value;
           return acc;
         }, {} as Record<string, string>),
-        technical_evaluation: classification === 'classificado' ? technicalEvaluation : null,
-        notes: formatNotes(),
-        disqualification_reason: classification === 'desclassificado' ? getDisqualificationReason() : null,
-        total_score: classification === 'classificado' 
+        technical_evaluation: classificationStatus === 'classificado' ? technicalEvaluation : null,
+        notes: formatNotes(classificationStatus),
+        disqualification_reason: classificationStatus === 'desclassificado' ? getDisqualificationReason() : null,
+        total_score: classificationStatus === 'classificado' 
           ? technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia 
           : 0,
         evaluated_by: user?.id || 'unknown',
@@ -89,8 +89,11 @@ export default function ScreeningModal({
 
       console.log('🎯 ENVIANDO TRIAGEM:', screeningData);
 
+      // SIMULAÇÃO DE CHAMADA API - REMOVA ESTA PARTE E USE SUA API REAL
+      console.log('📤 Simulando envio para API...');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Aqui você faria a chamada real para sua API
-      // Exemplo:
       // const response = await fetch('/api/screening', {
       //   method: 'POST',
       //   headers: {
@@ -103,10 +106,7 @@ export default function ScreeningModal({
       //   throw new Error('Erro ao salvar triagem');
       // }
 
-      // Simulando uma requisição bem-sucedida
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      console.log('✅ Triagem salva com sucesso!');
+      console.log('✅ Triagem salva com sucesso! Status:', classificationStatus);
       
       // Chamar callback de sucesso
       onScreeningComplete();
@@ -137,7 +137,7 @@ export default function ScreeningModal({
     return disqualificationReason || 'Desclassificado por documento obrigatório não conforme';
   };
 
-  const formatNotes = (): string => {
+  const formatNotes = (classificationStatus: 'classificado' | 'desclassificado'): string => {
     const parts = [];
     
     const documentResults = documents.map(doc => 
@@ -146,7 +146,7 @@ export default function ScreeningModal({
     
     parts.push(`VERIFICAÇÃO DOCUMENTAL: ${documentResults}`);
     
-    if (classification === 'desclassificado') {
+    if (classificationStatus === 'desclassificado') {
       parts.push(`MOTIVO DESCLASSIFICAÇÃO: ${getDisqualificationReason()}`);
     }
     
@@ -154,7 +154,7 @@ export default function ScreeningModal({
       parts.push(`OBSERVAÇÕES: ${notes}`);
     }
 
-    if (classification === 'classificado') {
+    if (classificationStatus === 'classificado') {
       parts.push(`AVALIAÇÃO TÉCNICA: Capacidade ${technicalEvaluation.capacidade_tecnica}/10 + Experiência ${technicalEvaluation.experiencia}/10 = Total ${technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia}/20`);
     }
     
@@ -198,34 +198,36 @@ export default function ScreeningModal({
       return;
     }
     
+    if (hasNonConformDocuments()) {
+      alert('Não é possível classificar candidato com documentos não conformes.');
+      return;
+    }
+    
     setClassification('classificado');
     setCurrentStep('technical');
   };
 
-  // Função para desclassificar candidato
+  // Função para desclassificar candidato - CORRIGIDA
   const handleDisqualify = async () => {
     if (!allRequiredDocumentsEvaluated()) {
       alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
       return;
     }
 
-    // ✅ Usar o valor diretamente em vez de depender do estado atual
-    const currentClassification = 'desclassificado';
+    console.log('🎯 INICIANDO DESCLASSIFICAÇÃO...');
     
-    console.log('🎯 DESCLASSIFICANDO - Dados que serão enviados:', {
-      status: 'Desclassificado',
-      classification: currentClassification,
-      documents: documents.map(d => ({ name: d.name, value: d.value })),
-      reason: getDisqualificationReason()
-    });
+    // Chama diretamente a função de submit com o status correto
+    await submitScreening('desclassificado');
+  };
 
-    // ✅ Primeiro atualiza o estado, depois chama a função
-    setClassification(currentClassification);
+  // Função para concluir classificação
+  const handleCompleteClassification = async () => {
+    if (technicalEvaluation.capacidade_tecnica === 0 || technicalEvaluation.experiencia === 0) {
+      alert('Avalie todos os critérios técnicos antes de concluir.');
+      return;
+    }
     
-    // Pequeno delay para garantir que o estado foi atualizado
-    setTimeout(() => {
-      submitScreening();
-    }, 100);
+    await submitScreening('classificado');
   };
 
   // Função para fechar modal
@@ -370,8 +372,17 @@ export default function ScreeningModal({
           disabled={loading || !allRequiredDocumentsEvaluated()}
           className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          <X className="w-4 h-4" />
-          Desclassificar
+          {loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              <X className="w-4 h-4" />
+              Desclassificar
+            </>
+          )}
         </button>
         
         <button
@@ -510,7 +521,7 @@ export default function ScreeningModal({
           Voltar
         </button>
         <button
-          onClick={() => submitScreening()}
+          onClick={handleCompleteClassification}
           disabled={loading || technicalEvaluation.capacidade_tecnica === 0 || technicalEvaluation.experiencia === 0}
           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
