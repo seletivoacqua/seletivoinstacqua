@@ -38,21 +38,27 @@ export default function InterviewEvaluationForm({
   const [resultado, setResultado] = useState<'Classificado' | 'Desclassificado'>('Classificado');
 
   const calculateTotal = () => {
-    const secao1 = (formacao_adequada + graduacoes_competencias) * 2;
-    const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza) * 2;
-    const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia;
-    const secao4 = residencia;
-    const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis) * 2;
+  // Seção 1: máximo 10 pontos (ao invés de 20)
+  const secao1 = (formacao_adequada + graduacoes_competencias); // Remove o * 2
+  
+  // Seção 2: máximo 15 pontos (ao invés de 30)
+  const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza); // Remove o * 2
+  
+  const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia;
+  const secao4 = residencia;
+  
+  // Seção 5: máximo 15 pontos (ao invés de 30)
+  const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis); // Remove o * 2
 
-    return {
-      secao1,
-      secao2,
-      secao3,
-      secao4,
-      secao5,
-      total: secao1 + secao2 + secao3 + secao4 + secao5
-    };
+  return {
+    secao1,
+    secao2,
+    secao3,
+    secao4,
+    secao5,
+    total: secao1 + secao2 + secao3 + secao4 + secao5
   };
+};
 
   const scores = calculateTotal();
 
