@@ -188,5 +188,9 @@ export const googleSheetsService = {
       return result.data.candidates || result.data || [];
     }
     return [];
+  },
+
+  async getAnalysts(): Promise<GoogleSheetsResponse> {
+    return makeRequest('getAnalysts');
   }
 };

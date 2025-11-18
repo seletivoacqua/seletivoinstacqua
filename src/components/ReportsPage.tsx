@@ -41,64 +41,85 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }, [reportType, selectedAnalyst, selectedInterviewer]);
 
- async function loadAnalystsAndInterviewers() {
-  try {
-    setLoadingLists(true);
-    console.log('🔄 Iniciando carregamento de analistas e entrevistadores...');
+  async function loadAnalystsAndInterviewers() {
+    try {
+      console.log('🔄 Iniciando carregamento de analistas e entrevistadores...');
 
-    // Use o mesmo serviço que funciona no InterviewCandidatesList
-    const { googleSheetsService } = await import('../services/googleSheets');
+      const { googleSheetsService } = await import('../services/googleSheets');
 
-    const [analystsResult, interviewersResult] = await Promise.all([
-      googleSheetsService.getAnalysts(),
-      googleSheetsService.getInterviewers()
-    ]);
+      // Carregar analistas e entrevistadores
+      const [analystsResult, interviewersResult] = await Promise.all([
+        googleSheetsService.getAnalysts(),
+        googleSheetsService.getInterviewers()
+      ]);
 
-    console.log('📊 Resultado analistas:', analystsResult);
-    console.log('🎤 Resultado entrevistadores:', interviewersResult);
+      console.log('📊 Resultado analistas:', analystsResult);
+      console.log('🎤 Resultado entrevistadores:', interviewersResult);
 
-    // Processar analistas
-    if (analystsResult.success && Array.isArray(analystsResult.data)) {
-      setAnalysts(analystsResult.data);
-      console.log('✅ Analistas carregados:', analystsResult.data.length);
-    } else {
-      console.error('❌ Falha ao carregar analistas:', analystsResult);
+      // Processar analistas
+      if (analystsResult.success && Array.isArray(analystsResult.data)) {
+        const formattedAnalysts = analystsResult.data.map((analyst: any) => ({
+          id: analyst.email || analyst.id,
+          name: analyst.name || analyst.nome,
+          email: analyst.email,
+          role: analyst.role || 'analista'
+        }));
+        setAnalysts(formattedAnalysts);
+        console.log('✅ Analistas carregados:', formattedAnalysts.length);
+      } else {
+        console.error('❌ Falha ao carregar analistas:', analystsResult);
+        setAnalysts([]);
+      }
+
+      // Processar entrevistadores
+      if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
+        const formattedInterviewers = interviewersResult.data.map((interviewer: any) => ({
+          id: interviewer.email || interviewer.id,
+          name: interviewer.name || interviewer.nome,
+          email: interviewer.email,
+          role: 'entrevistador'
+        }));
+        setInterviewers(formattedInterviewers);
+        console.log('✅ Entrevistadores carregados:', formattedInterviewers.length);
+      } else {
+        console.error('❌ Falha ao carregar entrevistadores:', interviewersResult);
+        setInterviewers([]);
+      }
+
+    } catch (error) {
+      console.error('❌ Erro geral ao carregar analistas e entrevistadores:', error);
       setAnalysts([]);
-    }
-
-    // Processar entrevistadores
-    if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
-      setInterviewers(interviewersResult.data);
-      console.log('✅ Entrevistadores carregados:', interviewersResult.data.length);
-    } else {
-      console.error('❌ Falha ao carregar entrevistadores:', interviewersResult);
       setInterviewers([]);
     }
-
-  } catch (error) {
-    console.error('❌ Erro geral ao carregar analistas e entrevistadores:', error);
-    setAnalysts([]);
-    setInterviewers([]);
-  } finally {
-    setLoadingLists(false);
   }
-}
   async function loadStats() {
     try {
+      console.log('📊 Carregando estatísticas...');
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.getReportStats();
 
+      console.log('📈 Resultado estatísticas:', result);
+
       if (result.success && result.data) {
         setStats(result.data);
+        console.log('✅ Estatísticas carregadas:', result.data);
+      } else {
+        console.error('❌ Falha ao carregar estatísticas:', result);
       }
     } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
+      console.error('❌ Erro ao carregar estatísticas:', error);
     }
   }
 
   async function loadReport() {
     try {
       setLoading(true);
+      console.log('📋 Carregando relatório...', {
+        reportType,
+        selectedAnalyst,
+        selectedInterviewer
+      });
+
       const { googleSheetsService } = await import('../services/googleSheets');
 
       let analystEmail = undefined;
@@ -107,11 +128,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       if (selectedAnalyst !== 'todos') {
         const analyst = analysts.find(a => a.id === selectedAnalyst);
         analystEmail = analyst?.email;
+        console.log('👤 Filtro analista:', analystEmail);
       }
 
       if (selectedInterviewer !== 'todos') {
         const interviewer = interviewers.find(i => i.id === selectedInterviewer);
         interviewerEmail = interviewer?.email;
+        console.log('🎤 Filtro entrevistador:', interviewerEmail);
       }
 
       const result = await googleSheetsService.getReport(
@@ -120,15 +143,18 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         interviewerEmail
       );
 
+      console.log('📦 Resultado relatório:', result);
+
       if (result.success && result.data) {
         const data = Array.isArray(result.data) ? result.data : [];
         setReportData(data);
-        console.log('📊 Relatório carregado:', data.length, 'registros');
+        console.log('✅ Relatório carregado:', data.length, 'registros');
       } else {
+        console.error('❌ Falha ao carregar relatório:', result);
         setReportData([]);
       }
     } catch (error) {
-      console.error('Erro ao carregar relatório:', error);
+      console.error('❌ Erro ao carregar relatório:', error);
       setReportData([]);
     } finally {
       setLoading(false);
