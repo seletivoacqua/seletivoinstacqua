@@ -138,9 +138,8 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
     }
   };
 
-  const getCandidateName = () => {
-    return candidate.NOMECOMPLETO || candidate.NOMECOMPLETO;
-          
+ const getCandidateName = () => {
+    return candidate.NOMECOMPLETO || candidate.nomeCompleto || candidate.NomeCompleto || 'Nome não informado';
   };
 
   const getSocialName = () => {
