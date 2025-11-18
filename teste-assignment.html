@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teste AssignmentPanel</title>
+  <style>
+    .candidate {
+      padding: 16px;
+      border: 2px solid #ccc;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+    .selected {
+      border-color: blue;
+      background: #e3f2fd;
+    }
+  </style>
+</head>
+<body>
+  <h1>Teste de Seleção de Candidatos</h1>
+  <div id="candidates"></div>
+  
+  <script>
+    const candidates = [
+      { id: '1', name: 'João Silva', cpf: '111.111.111-11' },
+      { id: '2', name: 'Maria Santos', cpf: '222.222.222-22' },
+      { id: '3', name: 'Pedro Oliveira', cpf: '333.333.333-33' }
+    ];
+    
+    let selected = new Set();
+    
+    function toggleCandidate(id) {
+      console.log('toggleCandidate chamado com id:', id);
+      if (selected.has(id)) {
+        selected.delete(id);
+      } else {
+        selected.add(id);
+      }
+      render();
+    }
+    
+    function render() {
+      const container = document.getElementById('candidates');
+      container.innerHTML = candidates.map(c => `
+        <div 
+          class="candidate ${selected.has(c.id) ? 'selected' : ''}"
+          onclick="toggleCandidate('${c.id}')"
+        >
+          <input 
+            type="checkbox" 
+            ${selected.has(c.id) ? 'checked' : ''}
+            readonly
+            style="pointer-events: none"
+          />
+          <span>${c.name} - CPF: ${c.cpf}</span>
+        </div>
+      `).join('');
+      console.log('Selecionados:', Array.from(selected));
+    }
+    
+    render();
+  </script>
+</body>
+</html>

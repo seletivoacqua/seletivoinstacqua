@@ -82,12 +82,19 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
   }
 
   function toggleCandidate(id: string) {
+    console.log('toggleCandidate chamado para ID:', id);
+    console.log('Estado atual de selectedCandidates:', Array.from(selectedCandidates));
+
     const newSelection = new Set(selectedCandidates);
     if (newSelection.has(id)) {
       newSelection.delete(id);
+      console.log('Removendo ID:', id);
     } else {
       newSelection.add(id);
+      console.log('Adicionando ID:', id);
     }
+
+    console.log('Novo estado de selectedCandidates:', Array.from(newSelection));
     setSelectedCandidates(newSelection);
   }
 
@@ -199,7 +206,10 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 {unassignedCandidates.map(candidate => (
                   <div
                     key={candidate.id}
-                    onClick={() => toggleCandidate(candidate.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleCandidate(candidate.id);
+                    }}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       selectedCandidates.has(candidate.id)
                         ? 'border-blue-500 bg-blue-50'
