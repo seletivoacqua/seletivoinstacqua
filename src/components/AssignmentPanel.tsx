@@ -210,13 +210,13 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                       <input
                         type="checkbox"
                         checked={selectedCandidates.has(candidate.id)}
-                        onChange={() => toggleCandidate(candidate.id)}
-                        className="mt-1"
+                        readOnly
+                        className="mt-1 pointer-events-none"
                       />
                       <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{candidate.name}</div>
+                        <div className="font-semibold text-gray-800">{candidate.NOMECOMPLETO || candidate.full_name || candidate.nome_completo || 'Nome não informado'}</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          CPF: {candidate.registration_number} • Área: {candidate.AREAATUACAO}
+                          CPF: {candidate.CPF || candidate.cpf || candidate.cpf_numero || 'Não informado'} • Área: {candidate.AREAATUACAO || candidate.area || candidate.Area || 'Não informada'}
                         </div>
                       </div>
                     </div>
