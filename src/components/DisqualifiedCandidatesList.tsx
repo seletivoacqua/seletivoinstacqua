@@ -16,7 +16,9 @@ interface Candidate {
   AREAATUACAO?: string;
   desired_area?: string;
   area_atuacao_pretendida?: string;
-  CARGOPRETENDIDO?: string;
+  // CAMPOS ATUALIZADOS:
+  CARGOADMIN?: string;
+  CARGOASSIS?: string;
   cargo_administrativo?: string | boolean;
   cargo_assistencial?: string | boolean;
   status?: string;
@@ -91,8 +93,19 @@ export default function DisqualifiedCandidatesList() {
     return c.AREAATUACAO || c.area_atuacao_pretendida || c.desired_area || 'Área não informada';
   }
 
+  // FUNÇÃO ATUALIZADA: mostra ambos os cargos
   function getCargo(c: Candidate) {
-    return c.CARGOPRETENDIDO || c.cargo_administrativo || c.cargo_assistencial || 'Não informado';
+    const cargos = [];
+    if (c.CARGOADMIN) cargos.push(`Admin: ${c.CARGOADMIN}`);
+    if (c.CARGOASSIS) cargos.push(`Assis: ${c.CARGOASSIS}`);
+    
+    // Fallback para campos antigos se necessário
+    if (cargos.length === 0) {
+      if (c.cargo_administrativo) cargos.push(`Admin: ${c.cargo_administrativo}`);
+      if (c.cargo_assistencial) cargos.push(`Assis: ${c.cargo_assistencial}`);
+    }
+    
+    return cargos.length > 0 ? cargos.join(' | ') : 'Não informado';
   }
 
   function getDataTriagem(c: Candidate) {
@@ -178,7 +191,7 @@ export default function DisqualifiedCandidatesList() {
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Nome Completo</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">CPF</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Área</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Cargo</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Cargos</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Motivo da Desclassificação</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Data da Triagem</th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Analista</th>
@@ -253,6 +266,22 @@ export default function DisqualifiedCandidatesList() {
                 <p className="text-xl font-semibold text-red-900 leading-relaxed">
                   {getMotivoDesclassificacao(selectedCandidate)}
                 </p>
+              </div>
+
+              {/* SEÇÃO DE CARGOS NO MODAL */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Cargo Administrativo</p>
+                  <p className="text-lg text-gray-900 p-3 bg-gray-50 rounded-lg">
+                    {selectedCandidate.CARGOADMIN || selectedCandidate.cargo_administrativo || 'Não informado'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Cargo Assistencial</p>
+                  <p className="text-lg text-gray-900 p-3 bg-gray-50 rounded-lg">
+                    {selectedCandidate.CARGOASSIS || selectedCandidate.cargo_assistencial || 'Não informado'}
+                  </p>
+                </div>
               </div>
 
               {getObservacoes(selectedCandidate) && (
