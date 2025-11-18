@@ -1,4 +1,9 @@
+import { cacheService } from './cacheService';
+import { requestDeduplicator } from './requestDeduplication';
+import { performanceMonitor } from './performanceMonitor';
+
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxfl0gWq3-dnZmYcz5AIHkpOyC1XdRb8QdaMRQTQZnn5sqyQZvV3qhCevhXuFHGYBk0/exec';
+
 interface GoogleSheetsResponse {
   success: boolean;
   data?: any;
@@ -6,33 +11,79 @@ interface GoogleSheetsResponse {
   message?: string;
 }
 
-async function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
-  try {
-    // Construir URL com query parameters para evitar preflight CORS
-    const queryParams = new URLSearchParams({ action, ...params });
-    const url = `${SCRIPT_URL}?${queryParams.toString()}`;
+interface RequestOptions {
+  cache?: boolean;
+  cacheTTL?: number;
+  deduplicate?: boolean;
+}
 
-    const response = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
+async function makeRequest(
+  action: string,
+  params: any = {},
+  options: RequestOptions = {}
+): Promise<GoogleSheetsResponse> {
+  const {
+    cache = true,
+    cacheTTL = 30000,
+    deduplicate = true
+  } = options;
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  const cacheKey = `${action}:${JSON.stringify(params)}`;
+  const startTime = Date.now();
+
+  if (cache) {
+    const cached = cacheService.get<GoogleSheetsResponse>(cacheKey);
+    if (cached) {
+      const duration = Date.now() - startTime;
+      performanceMonitor.logRequest(action, duration, true);
+      return cached;
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error(`Erro na requisição ${action}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro na requisição'
-    };
   }
+
+  const executeRequest = async (): Promise<GoogleSheetsResponse> => {
+    try {
+      const queryParams = new URLSearchParams({ action, ...params });
+      const url = `${SCRIPT_URL}?${queryParams.toString()}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (cache && data.success) {
+        cacheService.set(cacheKey, data, cacheTTL);
+      }
+
+      const duration = Date.now() - startTime;
+      performanceMonitor.logRequest(action, duration, false);
+
+      return data;
+    } catch (error) {
+      console.error(`Erro na requisição ${action}:`, error);
+      const duration = Date.now() - startTime;
+      performanceMonitor.logRequest(action, duration, false);
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro na requisição'
+      };
+    }
+  };
+
+  if (deduplicate) {
+    return requestDeduplicator.deduplicate(cacheKey, executeRequest);
+  }
+
+  return executeRequest();
 }
 
 export const googleSheetsService = {
@@ -49,11 +100,19 @@ export const googleSheetsService = {
       analystEmail?: string;
     }
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('updateCandidateStatus', {
+    const result = await makeRequest('updateCandidateStatus', {
       registrationNumber,
       statusTriagem,
       ...options
-    });
+    }, { cache: false, deduplicate: false });
+
+    if (result.success) {
+      cacheService.invalidatePattern(/getCandidates/);
+      cacheService.invalidatePattern(/getCandidatesByStatus/);
+      cacheService.invalidatePattern(/getReportStats/);
+    }
+
+    return result;
   },
 
   async getCandidatesByStatus(status: 'Classificado' | 'Desclassificado' | 'Revisar'): Promise<GoogleSheetsResponse> {
