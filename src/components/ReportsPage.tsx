@@ -58,8 +58,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       console.log('🎤 Resultado entrevistadores:', interviewersResult);
 
       // Processar analistas
-      if (analystsResult.success && Array.isArray(analystsResult.data)) {
-        const formattedAnalysts = analystsResult.data.map((analyst: any) => ({
+      if (analystsResult.success && analystsResult.data) {
+        // Verificar se os dados estão em data.analysts ou diretamente em data
+        const analystsArray = analystsResult.data.analysts ||
+                             (Array.isArray(analystsResult.data) ? analystsResult.data : []);
+
+        const formattedAnalysts = analystsArray.map((analyst: any) => ({
           id: analyst.email || analyst.id,
           name: analyst.name || analyst.nome,
           email: analyst.email,
@@ -73,8 +77,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       }
 
       // Processar entrevistadores
-      if (interviewersResult.success && Array.isArray(interviewersResult.data)) {
-        const formattedInterviewers = interviewersResult.data.map((interviewer: any) => ({
+      if (interviewersResult.success && interviewersResult.data) {
+        // Verificar se os dados estão em data.interviewers ou diretamente em data
+        const interviewersArray = interviewersResult.data.interviewers ||
+                                 (Array.isArray(interviewersResult.data) ? interviewersResult.data : []);
+
+        const formattedInterviewers = interviewersArray.map((interviewer: any) => ({
           id: interviewer.email || interviewer.id,
           name: interviewer.name || interviewer.nome,
           email: interviewer.email,
