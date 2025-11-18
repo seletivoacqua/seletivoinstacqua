@@ -1,17 +1,6 @@
 // ============================================
 // GOOGLE APPS SCRIPT - SISTEMA DE TRIAGEM COMPLETO
-// VERSÃO PRODUÇÃO - TESTADA E OTIMIZADA
-// ============================================
-//
-// ✅ 54 FUNÇÕES IMPLEMENTADAS
-// ✅ Cache avançado com lock (evita chamadas simultâneas)
-// ✅ Sistema de indexação para performance
-// ✅ CORS corrigido
-// ✅ Suporte para 50+ usuários simultâneos
-//
-// ÚLTIMA ATUALIZAÇÃO: Novembro 2025
-// STATUS: PRODUÇÃO ESTÁVEL
-//
+// VERSÃO CORRIGIDA - CORS E FETCH RESOLVIDOS
 // ============================================
 
 // Adicione no início do seu arquivo .gs
