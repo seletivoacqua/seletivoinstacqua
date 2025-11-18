@@ -113,10 +113,13 @@ class GoogleSheetsService {
       console.log('👤 Exemplo do primeiro candidato:', candidatesArray[0]);
     }
 
-    return candidatesArray.map((candidate: any) => {
+    return candidatesArray.map((candidate: any, index: number) => {
+      // Garantir ID único: usar CPF ou gerar um ID baseado no índice
+      const candidateId = candidate.CPF || candidate.id || `candidate_${index}_${Date.now()}`;
+
       const normalized: any = {
         ...candidate,
-        id: candidate.CPF || candidate.id,
+        id: candidateId,
         registration_number: candidate.CPF || candidate.registration_number,
         name: candidate.NOMECOMPLETO || candidate.name,
 
@@ -282,8 +285,26 @@ export const candidateService = {
     pageSize: number = 50
   ): Promise<PaginatedResponse<Candidate>> {
     try {
+      console.log('🔍 [getUnassignedCandidates] Iniciando busca...');
       const allData = await sheetsService.getCandidates();
+      console.log('📊 [getUnassignedCandidates] Total de candidatos:', allData.length);
+
       const unassignedData = allData.filter(item => !item.assigned_to);
+      console.log('📊 [getUnassignedCandidates] Candidatos não alocados:', unassignedData.length);
+
+      // Verificar IDs duplicados
+      const ids = unassignedData.map(c => c.id);
+      const uniqueIds = new Set(ids);
+      console.log('🔍 [getUnassignedCandidates] Total de IDs:', ids.length);
+      console.log('🔍 [getUnassignedCandidates] IDs únicos:', uniqueIds.size);
+
+      if (ids.length !== uniqueIds.size) {
+        console.warn('⚠️ [getUnassignedCandidates] IDs DUPLICADOS DETECTADOS!');
+        console.log('🔍 Primeiros 5 candidatos:');
+        unassignedData.slice(0, 5).forEach((c, i) => {
+          console.log(`  ${i + 1}. ID: ${c.id}, CPF: ${c.CPF}, Nome: ${c.NOMECOMPLETO}`);
+        });
+      }
 
       unassignedData.sort((a, b) => {
         if (a.priority !== b.priority) {
@@ -297,6 +318,8 @@ export const candidateService = {
       const from = (page - 1) * pageSize;
       const to = from + pageSize;
       const paginatedData = unassignedData.slice(from, to);
+
+      console.log('📄 [getUnassignedCandidates] Retornando página', page, 'com', paginatedData.length, 'candidatos');
 
       return {
         data: paginatedData,
