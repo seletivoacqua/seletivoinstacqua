@@ -1015,9 +1015,13 @@ function _pickPhoneFromRow_(headers, row) {
 
 function _applyTemplate_(text, candidate){
   if (!text) return '';
+
+  // Combina CARGOADMIN e CARGOASSIS
+  const cargos = [candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || '';
+
   return String(text)
     .replace(/\[NOME\]/g, candidate.NOMECOMPLETO || candidate.NOMESOCIAL || '')
-    .replace(/\[CARGO\]/g, candidate.CARGOPRETENDIDO || '')
+    .replace(/\[CARGO\]/g, cargos)
     .replace(/\[AREA\]/g, candidate.AREAATUACAO || '');
 }
 
