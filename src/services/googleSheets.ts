@@ -168,7 +168,7 @@ export const googleSheetsService = {
       candidateIds,
       sentBy,
       fromAlias
-    });
+    }, { cache: false, deduplicate: false });
 
     console.log('📦 Resposta recebida:', result);
     return result;
@@ -179,15 +179,28 @@ export const googleSheetsService = {
     messageType: 'email' | 'sms',
     status: string
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('updateMessageStatus', {
+    const result = await makeRequest('updateMessageStatus', {
       registrationNumbers: registrationNumbers.join(','),
       messageType,
       status
-    });
+    }, { cache: false, deduplicate: false });
+
+    if (result.success) {
+      cacheService.invalidatePattern(/getCandidates/);
+    }
+
+    return result;
   },
 
   async moveToInterview(candidateIds: string): Promise<GoogleSheetsResponse> {
-    return makeRequest('moveToInterview', { candidateIds });
+    const result = await makeRequest('moveToInterview', { candidateIds }, { cache: false, deduplicate: false });
+
+    if (result.success) {
+      cacheService.invalidatePattern(/getCandidates/);
+      cacheService.invalidatePattern(/getInterviewCandidates/);
+    }
+
+    return result;
   },
 
   async getInterviewCandidates(): Promise<GoogleSheetsResponse> {
@@ -203,11 +216,18 @@ export const googleSheetsService = {
     interviewerEmail: string,
     adminEmail: string
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('allocateToInterviewer', {
+    const result = await makeRequest('allocateToInterviewer', {
       candidateIds,
       interviewerEmail,
       adminEmail
-    });
+    }, { cache: false, deduplicate: false });
+
+    if (result.success) {
+      cacheService.invalidatePattern(/getInterviewCandidates/);
+      cacheService.invalidatePattern(/getInterviewerCandidates/);
+    }
+
+    return result;
   },
 
   async getInterviewerCandidates(interviewerEmail: string): Promise<GoogleSheetsResponse> {
@@ -215,7 +235,15 @@ export const googleSheetsService = {
   },
 
   async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
-    return makeRequest('saveInterviewEvaluation', evaluation);
+    const result = await makeRequest('saveInterviewEvaluation', evaluation, { cache: false, deduplicate: false });
+
+    if (result.success) {
+      cacheService.invalidatePattern(/getInterviewerCandidates/);
+      cacheService.invalidatePattern(/getInterviewCandidates/);
+      cacheService.invalidatePattern(/getReportStats/);
+    }
+
+    return result;
   },
 
   async getReportStats(): Promise<GoogleSheetsResponse> {
@@ -238,7 +266,15 @@ export const googleSheetsService = {
   },
 
   async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
-    return makeRequest('saveScreening', screeningData);
+    const result = await makeRequest('saveScreening', screeningData, { cache: false, deduplicate: false });
+
+    if (result.success) {
+      cacheService.invalidatePattern(/getCandidates/);
+      cacheService.invalidatePattern(/getCandidatesByStatus/);
+      cacheService.invalidatePattern(/getReportStats/);
+    }
+
+    return result;
   },
 
   async fetchCandidates(): Promise<any[]> {
