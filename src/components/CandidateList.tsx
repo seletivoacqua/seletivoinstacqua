@@ -36,8 +36,10 @@ export default function CandidateList({
     // Filtro por área
     const areaMatch = filterArea === 'all' || candidate.AREAATUACAO === filterArea;
     
-    // Filtro por cargo
-    const cargoMatch = filterCargo === 'all' || candidate.CARGOPRETENDIDO === filterCargo;
+    // Filtro por cargo - ATUALIZADO
+    const cargoMatch = filterCargo === 'all' || 
+                      candidate.CARGOADMIN === filterCargo || 
+                      candidate.CARGOASSIS === filterCargo;
     
     // Filtro por status
     const statusMatch = filterStatus === 'all' || 
@@ -57,9 +59,9 @@ export default function CandidateList({
     candidates.map(c => c.AREAATUACAO).filter(Boolean)
   )).sort();
 
-  // Obter cargos únicos para o filtro
+  // Obter cargos únicos para o filtro - ATUALIZADO
   const cargos = Array.from(new Set(
-    candidates.map(c => c.CARGOPRETENDIDO).filter(Boolean)
+    candidates.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS]).filter(Boolean)
   )).sort();
 
   const getStatusIcon = (status?: string) => {
@@ -90,6 +92,15 @@ export default function CandidateList({
 
   const handleCandidateClick = (candidate: Candidate) => {
     setDetailCandidate(candidate);
+  };
+
+  // Função para exibir os cargos do candidato - NOVA
+  const renderCargos = (candidate: Candidate) => {
+    const cargos = [];
+    if (candidate.CARGOADMIN) cargos.push(`Admin: ${candidate.CARGOADMIN}`);
+    if (candidate.CARGOASSIS) cargos.push(`Assis: ${candidate.CARGOASSIS}`);
+    
+    return cargos.length > 0 ? cargos.join(' | ') : null;
   };
 
   return (
@@ -142,10 +153,10 @@ export default function CandidateList({
               </select>
             </div>
 
-            {/* Filtro por Cargo */}
+            {/* Filtro por Cargo - ATUALIZADO */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Cargo Pretendido
+                Cargo (Admin/Assistencial)
               </label>
               <select
                 value={filterCargo}
@@ -210,9 +221,10 @@ export default function CandidateList({
                     <span className="font-medium">Área:</span> {candidate.AREAATUACAO}
                   </p>
                 )}
-                {candidate.CARGOPRETENDIDO && (
+                {/* EXIBIÇÃO DOS CARGOS - ATUALIZADO */}
+                {renderCargos(candidate) && (
                   <p className="text-xs text-slate-600">
-                    <span className="font-medium">Cargo:</span> {candidate.CARGOPRETENDIDO}
+                    <span className="font-medium">Cargos:</span> {renderCargos(candidate)}
                   </p>
                 )}
                 <p className="text-xs text-slate-500">
