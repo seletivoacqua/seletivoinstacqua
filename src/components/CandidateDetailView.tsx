@@ -139,7 +139,20 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
   };
 
   const getCandidateName = () => {
-    return candidate.NOMECOMPLETO || candidate.nome_completo || candidate.full_name || 'Candidato';
+    // Debug: verificar quais campos existem
+    console.log('🔍 Campos disponíveis no candidato:', Object.keys(candidate));
+    console.log('📝 NOMECOMPLETO:', candidate.NOMECOMPLETO);
+    console.log('📝 nome_completo:', candidate.nome_completo);
+    console.log('📝 full_name:', candidate.full_name);
+    console.log('📝 Nome:', candidate.Nome);
+    console.log('📝 name:', candidate.name);
+
+    return candidate.NOMECOMPLETO ||
+           candidate.nome_completo ||
+           candidate.full_name ||
+           candidate.Nome ||
+           candidate.name ||
+           'Candidato';
   };
 
   const getSocialName = () => {
