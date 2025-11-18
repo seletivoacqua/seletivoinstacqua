@@ -43,7 +43,7 @@ export default function ScreeningModal({
     { name: 'CNH', value: 'nao_se_aplica' },
     { name: 'Comprovação de Experiência Profissional', value: 'nao_se_aplica' },
     { name: 'Regularidade Profissional', value: 'nao_se_aplica' },
-    { name: 'Laudo médico (PCD)', value: 'nao_se_aplica' },
+    { name: 'Laudo médico (PCD) (EM CASO DE PCD)', value: 'nao_se_aplica' },
     { name: 'Currículo atualizado', value: 'nao_se_aplica' }
   ]);
 
@@ -143,7 +143,7 @@ export default function ScreeningModal({
       { name: 'CNH', value: 'nao_se_aplica' },
       { name: 'Comprovação de Experiência Profissional', value: 'nao_se_aplica' },
       { name: 'Regularidade Profissional', value: 'nao_se_aplica' },
-      { name: 'Laudo médico (PCD) ', value: 'nao_se_aplica' },
+      { name: 'Laudo médico (PCD) (EM CASO DE PCD)', value: 'nao_se_aplica' },
       { name: 'Currículo atualizado', value: 'nao_se_aplica' }
     ]);
     setTechnicalEvaluation({
