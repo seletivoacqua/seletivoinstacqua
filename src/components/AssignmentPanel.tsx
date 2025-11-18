@@ -81,23 +81,37 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     }
   }
 
-  function toggleCandidate(id: string) {
-    const newSelection = new Set(selectedCandidates);
-    if (newSelection.has(id)) {
-      newSelection.delete(id);
-    } else {
-      newSelection.add(id);
-    }
-    setSelectedCandidates(newSelection);
-  }
+  const toggleCandidate = (id: string) => {
+    setSelectedCandidates(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
-  function selectAll() {
+  const handleCheckboxChange = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Impede que o evento chegue no container
+    toggleCandidate(id);
+  };
+
+  const handleContainerClick = (id: string, e: React.MouseEvent) => {
+    // Só processa o clique se não foi no checkbox
+    if ((e.target as HTMLElement).tagName !== 'INPUT') {
+      toggleCandidate(id);
+    }
+  };
+
+  const selectAll = () => {
     if (selectedCandidates.size === unassignedCandidates.length) {
       setSelectedCandidates(new Set());
     } else {
       setSelectedCandidates(new Set(unassignedCandidates.map(c => c.id)));
     }
-  }
+  };
 
   async function handleAssign() {
     if (!selectedAnalyst || selectedCandidates.size === 0) {
@@ -199,7 +213,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 {unassignedCandidates.map(candidate => (
                   <div
                     key={candidate.id}
-                    onClick={() => toggleCandidate(candidate.id)}
+                    onClick={(e) => handleContainerClick(candidate.id, e)}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       selectedCandidates.has(candidate.id)
                         ? 'border-blue-500 bg-blue-50'
@@ -210,12 +224,9 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                       <input
                         type="checkbox"
                         checked={selectedCandidates.has(candidate.id)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          toggleCandidate(candidate.id);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        onClick={(e) => handleCheckboxChange(candidate.id, e)}
+                        onChange={() => {}} // Empty handler to avoid React warnings
+                        className="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                       />
                       <div className="flex-1">
                         <div className="font-semibold text-gray-800">{candidate.name}</div>
