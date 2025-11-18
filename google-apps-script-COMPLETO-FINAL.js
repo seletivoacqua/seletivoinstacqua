@@ -3,6 +3,99 @@
 // VERSÃO CORRIGIDA - CORS E FETCH RESOLVIDOS
 // ============================================
 
+// Adicione no início do seu arquivo .gs
+const CACHE_TTL = 60; // 60 segundos (recomendado para 50+ usuários)
+const CACHE_KEYS = {
+  REPORT_DATA: 'report_data_v3',
+  USERS: 'users_data_v3',
+  STATS: 'stats_data_v3',
+  INTERVIEWERS: 'interviewers_v3',
+  REASONS: 'disqualification_reasons_v3'
+};
+
+// Serviço de Cache Avançado — VERSÃO PRODUÇÃO 2025
+class AdvancedCacheService {
+  static getCache() {
+    return CacheService.getScriptCache();
+  }
+
+  static getLock() {
+    return LockService.getScriptLock();
+  }
+
+  // JSON seguro (remove undefined e previne erros)
+  static safeStringify(obj) {
+    return JSON.stringify(obj, (key, value) =>
+      value === undefined ? null : value
+    );
+  }
+
+  static safeParse(str) {
+    try {
+      return str ? JSON.parse(str) : null;
+    } catch (e) {
+      console.warn('Cache parse error:', e);
+      return null;
+    }
+  }
+
+  static get(key) {
+    const cached = this.getCache().get(key);
+    return this.safeParse(cached);
+  }
+
+  static set(key, data, ttl = CACHE_TTL) {
+    try {
+      this.getCache().put(key, this.safeStringify(data), ttl);
+      return true;
+    } catch (error) {
+      console.warn('Cache set error:', error);
+      return false;
+    }
+  }
+
+  // VERSÃO SEGURA COM LOCK (evita 50 chamadas ao mesmo tempo)
+  static getWithFallback(key, fetchFunction, ttl = CACHE_TTL) {
+    let data = this.get(key);
+
+    if (data !== null) {
+      console.log('Cache hit:', key);
+      return data;
+    }
+
+    const lock = this.getLock();
+
+    // Tenta pegar o lock por até 10 segundos
+    if (lock.tryLock(10000)) {
+      try {
+        // Verifica novamente (outro usuário pode ter preenchido enquanto esperava)
+        data = this.get(key);
+        if (data !== null) {
+          console.log('Cache hit após lock:', key);
+          return data;
+        }
+
+        console.log('Cache miss + lock adquirido - executando fetch:', key);
+        data = fetchFunction(); // ← tem que ser função SÍNCRONA!
+
+        this.set(key, data, ttl);
+        console.log('Cache atualizado com sucesso:', key);
+      } catch (error) {
+        console.error('Erro crítico no fetchFunction:', error);
+        // Não salva erro no cache!
+      } finally {
+        lock.releaseLock();
+      }
+    } else {
+      console.warn('Lock não adquirido, retornando dados antigos ou nulos:', key);
+      // Pode retornar dados antigos ou forçar fallback simples
+      data = this.get(key) || fetchFunction(); // fallback sem cache
+    }
+
+    return data;
+  }
+}
+
 const SPREADSHEET_ID = '1iQSQ06P_OXkqxaGWN3uG5jRYFBKyjWqQyvzuGk2EplY';
 const SHEET_USUARIOS = 'USUARIOS';
 const SHEET_CANDIDATOS = 'CANDIDATOS';
@@ -453,67 +546,7 @@ function assignCandidates(params) {
 }
 
 // ============================================
-// MOTIVOS DE DESCLASSIFICAÇÃO
-// ============================================
-
-function initMotivosSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_MOTIVOS);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_MOTIVOS);
-    sheet.getRange('A1:C1').setValues([['ID', 'Motivo', 'Ativo']]);
-
-    const motivos = [
-      ['M001', 'Documentação incompleta', 'Sim'],
-      ['M002', 'Não atende aos requisitos mínimos da vaga', 'Sim'],
-      ['M003', 'Formação incompatível com a vaga', 'Sim'],
-      ['M004', 'Experiência insuficiente', 'Sim'],
-      ['M005', 'Documentos ilegíveis ou com qualidade inadequada', 'Sim'],
-      ['M006', 'Dados inconsistentes ou contraditórios', 'Sim'],
-      ['M007', 'Não apresentou documentos obrigatórios', 'Sim'],
-      ['M008', 'Fora do prazo de inscrição', 'Sim'],
-      ['M009', 'Outros motivos', 'Sim']
-    ];
-
-    sheet.getRange(2, 1, motivos.length, 3).setValues(motivos);
-  }
-
-  return sheet;
-}
-
-function getDisqualificationReasons() {
-  const sheet = initMotivosSheet();
-  const data = sheet.getDataRange().getValues();
-  const reasons = [];
-
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][2] === 'Sim') {
-      reasons.push({
-        id: data[i][0],
-        reason: data[i][1],
-        is_active: true
-      });
-    }
-  }
-
-  return reasons;
-}
-
-function getDisqualificationReasonById(reasonId) {
-  const sheet = initMotivosSheet();
-  const data = sheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === reasonId) {
-      return data[i][1];
-    }
-  }
-  return 'Motivo não especificado';
-}
-
-// ============================================
-// MENSAGENS
+// LOG DE MENSAGENS
 // ============================================
 
 function initMensagensSheet() {
@@ -531,19 +564,120 @@ function initMensagensSheet() {
 }
 
 function logMessage(params) {
-  const sheet = initMensagensSheet();
-  const newRow = [
-    getCurrentTimestamp(),
-    params.registrationNumber,
-    params.messageType,
-    params.recipient,
-    params.subject || '',
-    params.content,
-    params.sentBy,
-    params.status || 'pendente'
+  try {
+    const sheet = initMensagensSheet();
+    const newRow = [
+      getCurrentTimestamp(),
+      params.registrationNumber,
+      params.messageType,
+      params.recipient,
+      params.subject || '',
+      params.content,
+      params.sentBy,
+      params.status || 'pendente'
+    ];
+    sheet.appendRow(newRow);
+    return { success: true };
+  } catch (error) {
+    Logger.log('❌ Erro em logMessage: ' + error.toString());
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ============================================
+// MOTIVOS DE DESCLASSIFICAÇÃO
+// ============================================
+
+function initMotivosSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_MOTIVOS);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_MOTIVOS);
+    sheet.getRange('A1:D1').setValues([['ID', 'Motivo', 'Tipo', 'Ativo']]);
+    sheet.setFrozenRows(1);
+  }
+
+  // Limpa tudo abaixo do cabeçalho
+  sheet.getRange(2, 1, sheet.getMaxRows() - 1, 4).clearContent();
+
+  const motivosFixos = [
+    ['M001', 'Fora do prazo de inscrição', 'Fixo', 'Sim'],
+    ['M002', 'Vaga preenchida internamente', 'Fixo', 'Sim'],
+    ['M003', 'Desistência do candidato', 'Fixo', 'Sim'],
+    ['M099', 'Outros (especificar em observações)', 'Fixo', 'Sim']
   ];
-  sheet.appendRow(newRow);
-  return true;
+
+  // MAPA OFICIAL — nomes exatos das colunas na planilha Candidatos
+  const mapaNaoConformidade = {
+    'checkrg-cpf': 'Documentação de RG/CPF irregular ou ausente',
+    'check-cnh': 'CNH inválida, suspensa ou ausente',
+    'check-experiencia': 'Experiência insuficiente ou não comprovada',
+    'check-regularidade': 'Irregularidade em antecedentes ou documentação',
+    'check-laudo': 'Laudo médico ausente ou inválido (PCD)',
+    'check-curriculo': 'Currículo incompleto ou incompatível com a vaga'
+  };
+
+  const motivosDinamicos = Object.entries(mapaNaoConformidade)
+    .map(([key, texto], i) => [`D${String(i + 1).padStart(3, '0')}`, texto, 'Dinâmico', 'Sim']);
+
+  const todos = [...motivosFixos, ...motivosDinamicos];
+
+  if (todos.length > 0) {
+    sheet.getRange(2, 1, todos.length, 4).setValues(todos);
+  }
+
+  sheet.autoResizeColumns(1, 4);
+  Logger.log(`Aba ${SHEET_MOTIVOS} criada/atualizada: ${motivosFixos.length} fixos + ${motivosDinamicos.length} dinâmicos`);
+}
+
+function getDisqualificationReasons() {
+  return AdvancedCacheService.getWithFallback(
+    CACHE_KEYS.REASONS || 'disqualification_reasons_v4',
+    () => {
+      try {
+        let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_MOTIVOS);
+        if (!sheet || sheet.getLastRow() <= 1) {
+          initMotivosSheet();
+          sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_MOTIVOS);
+        }
+
+        const data = sheet.getDataRange().getValues();
+        const reasons = [];
+
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          const id = String(row[0] || '').trim();
+          const motivo = String(row[1] || '').trim();
+          const tipo = String(row[2] || 'Fixo').trim();
+          const ativo = String(row[3] || 'Sim').toLowerCase() === 'sim';
+
+          if (id && motivo && ativo) {
+            reasons.push({
+              id,
+              reason: motivo,
+              type: tipo.toLowerCase(),
+              is_active: true
+            });
+          }
+        }
+
+        reasons.sort((a, b) => {
+          if (a.type === b.type) return a.reason.localeCompare(b.reason);
+          return a.type === 'fixo' ? -1 : 1;
+        });
+
+        return reasons;
+
+      } catch (error) {
+        Logger.log('Erro crítico ao carregar motivos: ' + error);
+        return [
+          { id: 'M099', reason: 'Outros (especificar em observações)', type: 'fixo', is_active: true }
+        ];
+      }
+    },
+    600
+  );
 }
 
 // ============================================
@@ -561,24 +695,22 @@ function initTemplatesSheet() {
     const templates = [
       ['T001', 'Classificado - Email', 'email', 'Atualização do Processo Seletivo - Classificação',
        'Prezado(a) [NOME],\n\nTemos o prazer de informar que seu perfil foi classificado no processo seletivo para a vaga de [CARGO] na área de [AREA].\n\nNossa equipe entrará em contato em breve para dar continuidade ao processo.\n\nAgradecemos seu interesse e desejamos sucesso nesta etapa.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.'],
-      
+
       ['T002', 'Classificado - SMS', 'sms', '',
        'Olá [NOME]! Seu perfil foi classificado no processo para [CARGO]. Aguarde nosso contato para próximos passos.'],
-      
+
       ['T003', 'Desclassificado - Email', 'email', 'Atualização do Processo Seletivo',
        'Prezado(a) [NOME],\n\nAgradecemos sinceramente seu interesse em fazer parte de nossa equipe e pelo tempo dedicado ao processo seletivo para a vaga de [CARGO].\n\nInformamos que, após análise criteriosa, seu perfil não foi selecionado para prosseguir nesta oportunidade.\n\nSeu currículo permanecerá em nosso banco de dados para futuras oportunidades compatíveis com seu perfil.\n\nDesejamos sucesso em sua jornada profissional.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.'],
-      
+
       ['T004', 'Em Revisão - Email', 'email', 'Processo Seletivo - Análise em Andamento',
        'Prezado(a) [NOME],\n\nConfirmamos o recebimento de sua inscrição para a vaga de [CARGO].\n\nSeu cadastro está atualmente em análise por nossa equipe de recrutamento. O processo de triagem está em andamento e todas as inscrições estão sendo cuidadosamente avaliadas.\n\nVocê receberá uma atualização sobre o status assim que a análise for concluída.\n\nAgradecemos sua paciência e interesse em nossa organização.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.'],
-      
-      // ✅ NOVO TEMPLATE: Mais profissional e menos "spam"
+
       ['T005', 'Convite para Entrevista - Email', 'email', 'Convite para Próxima Etapa do Processo Seletivo',
        'Prezado(a) [NOME],\n\nÉ com satisfação que convidamos você para a próxima etapa do processo seletivo para a vaga de [CARGO].\n\nSeu perfil foi selecionado entre diversos candidatos e gostaríamos de conhecê-lo(a) melhor.\n\nNossa equipe entrará em contato em breve para agendar a entrevista e fornecer todos os detalhes.\n\nContamos com sua participação!\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção\n\n--\nEste e-mail foi enviado automaticamente. Por favor, não responda esta mensagem.']
     ];
 
     sheet.getRange(2, 1, templates.length, 5).setValues(templates);
-    
-    // Formatar a planilha para melhor visualização
+
     sheet.autoResizeColumns(1, 5);
     sheet.getRange('A1:E1').setFontWeight('bold').setBackground('#f3f3f3');
   }
@@ -607,8 +739,31 @@ function getMessageTemplates(params) {
 }
 
 // ============================================
-// ENVIO DE MENSAGENS
+// FUNÇÕES AUXILIARES PARA EMAIL
 // ============================================
+
+// ✅ FUNÇÃO PARA VERIFICAR ALIASES
+function myFunction() {
+  try {
+    const aliases = GmailApp.getAliases();
+    Logger.log('📧 Aliases disponíveis:');
+    aliases.forEach(alias => Logger.log('   - ' + alias));
+    return {
+      success: true,
+      email: Session.getActiveUser().getEmail(),
+      aliases: aliases
+    };
+  } catch (error) {
+    Logger.log('❌ Erro ao buscar aliases: ' + error.toString());
+    return {
+      success: false,
+      email: Session.getActiveUser().getEmail(),
+      aliases: [],
+      error: error.toString()
+    };
+  }
+}
+
 function getEmailAliases() {
   try {
     const aliases = GmailApp.getAliases();
@@ -630,86 +785,48 @@ function _twilioEnabled_(){
 
 function _formatE164_(phone){
   if (!phone) return '';
-  let cleaned = String(phone).replace(/\D/g, '');
-  cleaned = cleaned.replace(/^0+/, '');
-  if (!cleaned.startsWith('55')) {
-    cleaned = '55' + cleaned;
-  }
-  return '+' + cleaned;
-}
-
-function _sendSmsTwilio_(to, body){
-  if (!_twilioEnabled_()) {
-    Logger.log('⚠️ Twilio não configurado - Pulando SMS');
-    return { ok: false, skipped: true, error: 'Twilio não configurado' };
-  }
-
-  const sid = _getProp_('TWILIO_SID');
-  const token = _getProp_('TWILIO_TOKEN');
-  const from = _getProp_('TWILIO_FROM');
-
-  const formattedTo = _formatE164_(to);
-  Logger.log('📱 Enviando SMS: ' + formattedTo);
-
-  const url = 'https://api.twilio.com/2010-04-01/Accounts/' + sid + '/Messages.json';
-  const payload = {
-    To: formattedTo,
-    From: from,
-    Body: body
-  };
-
-  const options = {
-    method: 'post',
-    payload: payload,
-    muteHttpExceptions: true,
-    headers: {
-      Authorization: 'Basic ' + Utilities.base64Encode(sid + ':' + token)
-    }
-  };
 
   try {
-    const res = UrlFetchApp.fetch(url, options);
-    const code = res.getResponseCode();
+    let cleaned = String(phone).replace(/\D/g, '');
+    cleaned = cleaned.replace(/^0+/, '');
 
-    if (code >= 200 && code < 300) {
-      Logger.log('✅ SMS enviado');
-      return { ok: true };
+    if (!cleaned.startsWith('55')) {
+      cleaned = '55' + cleaned;
     }
 
-    const errorMsg = 'Twilio HTTP ' + code + ': ' + res.getContentText();
-    Logger.log('❌ ' + errorMsg);
-    return { ok: false, error: errorMsg };
-  } catch (e) {
-    Logger.log('❌ Erro SMS: ' + e.toString());
-    return { ok: false, error: e.toString() };
+    if (cleaned.length < 12) {
+      throw new Error('Número muito curto: ' + cleaned);
+    }
+
+    if (cleaned.length > 13) {
+      cleaned = cleaned.substring(0, 13);
+    }
+
+    return '+' + cleaned;
+
+  } catch (error) {
+    Logger.log('❌ Erro ao formatar telefone: ' + error.toString());
+    return '';
   }
 }
-
-
-// ============================================
-// FUNÇÕES DE ENVIO DE EMAIL - CORRIGIDAS
-// ============================================
 
 function _sendEmailGmail_(to, subject, body, alias) {
   try {
     Logger.log('📧 Enviando email para: ' + to);
     Logger.log('👤 Alias solicitado: ' + (alias || 'Email principal'));
-    
+
     const options = {
       htmlBody: body,
       noReply: false,
-      // ✅ NOME PERSONALIZADO NO CABEÇALHO:
       name: 'Processo Seletivo Instituto Acqua',
       replyTo: Session.getActiveUser().getEmail()
     };
-    
-    // ✅ USA SUA FUNÇÃO myFunction() para verificar aliases
+
     const aliasCheck = myFunction();
     const aliases = aliasCheck.aliases;
-    
-    // Lógica para definir o alias correto
+
     let finalAlias = null;
-    
+
     if (alias) {
       if (aliases.includes(alias)) {
         finalAlias = alias;
@@ -718,45 +835,42 @@ function _sendEmailGmail_(to, subject, body, alias) {
         Logger.log('⚠️ Alias solicitado não encontrado: ' + alias);
       }
     }
-    
+
     if (!finalAlias && aliases.length > 0) {
       finalAlias = aliases[0];
       Logger.log('🔄 Usando primeiro alias disponível: ' + aliases[0]);
     }
-    
-    // ✅ ATUALIZA as opções com o alias final
+
     if (finalAlias) {
       options.from = finalAlias;
       options.replyTo = finalAlias;
     }
-    
+
     Logger.log('⚙️ Opções de envio: ' + JSON.stringify(options));
-    
-    // ✅ ENVIAR EMAIL
+
     GmailApp.sendEmail(to, subject, body, options);
-    
+
     Logger.log('✅ Email enviado com sucesso');
     Logger.log('   De: Processo Seletivo Instituto Acqua');
     Logger.log('   Email: ' + (options.from || Session.getActiveUser().getEmail()));
-    
-    return { 
+
+    return {
       ok: true,
       from: options.from || Session.getActiveUser().getEmail(),
       displayName: 'Processo Seletivo Instituto Acqua',
       aliasUsed: !!finalAlias
     };
-    
+
   } catch (e) {
     Logger.log('❌ Erro ao enviar email: ' + e.toString());
-    
-    // ✅ FALLBACK mantendo o nome personalizado
+
     try {
       Logger.log('🔄 Tentando fallback simplificado...');
       GmailApp.sendEmail(to, subject, body, {
         name: 'Processo Seletivo Instituto Acqua'
       });
       Logger.log('✅ Email enviado via fallback');
-      return { 
+      return {
         ok: true,
         from: Session.getActiveUser().getEmail(),
         displayName: 'Processo Seletivo Instituto Acqua',
@@ -765,38 +879,31 @@ function _sendEmailGmail_(to, subject, body, alias) {
     } catch (fallbackError) {
       Logger.log('❌ Fallback também falhou: ' + fallbackError.toString());
     }
-    
-    return { 
-      ok: false, 
-      error: e.toString() 
+
+    return {
+      ok: false,
+      error: e.toString()
     };
   }
 }
 
-// ============================================
-// FUNÇÕES DE ENVIO DE SMS - CORRIGIDAS
-// ============================================
-
 function _sendSmsTwilio_(to, body) {
   try {
-    // ✅ Verificar se Twilio está configurado
     if (!_twilioEnabled_()) {
       Logger.log('⚠️ Twilio não configurado - SMS desabilitado');
-      return { 
-        ok: false, 
-        skipped: true, 
-        error: 'Twilio não configurado. Verifique as variáveis TWILIO_SID, TWILIO_TOKEN e TWILIO_FROM.' 
+      return {
+        ok: false,
+        skipped: true,
+        error: 'Twilio não configurado. Verifique as variáveis TWILIO_SID, TWILIO_TOKEN e TWILIO_FROM.'
       };
     }
 
-    // ✅ Validação do número de telefone
     if (!to) {
       throw new Error('Número de telefone é obrigatório');
     }
 
     const formattedTo = _formatE164_(to);
-    
-    // ✅ Validação adicional da formatação
+
     if (!formattedTo.startsWith('+55') || formattedTo.length < 13) {
       throw new Error('Número de telefone brasileiro inválido: ' + formattedTo);
     }
@@ -809,7 +916,7 @@ function _sendSmsTwilio_(to, body) {
     const from = _getProp_('TWILIO_FROM');
 
     const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
-    
+
     const payload = {
       To: formattedTo,
       From: from,
@@ -824,7 +931,7 @@ function _sendSmsTwilio_(to, body) {
         Authorization: 'Basic ' + Utilities.base64Encode(sid + ':' + token),
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      timeout: 30000 // 30 segundos timeout
+      timeout: 30000
     };
 
     const response = UrlFetchApp.fetch(url, options);
@@ -836,8 +943,8 @@ function _sendSmsTwilio_(to, body) {
     if (responseCode >= 200 && responseCode < 300) {
       const responseData = JSON.parse(responseText);
       Logger.log('✅ SMS enviado com sucesso - SID: ' + responseData.sid);
-      return { 
-        ok: true, 
+      return {
+        ok: true,
         sid: responseData.sid,
         status: responseData.status
       };
@@ -850,8 +957,8 @@ function _sendSmsTwilio_(to, body) {
       } catch (e) {
         errorMessage += ` - ${responseText.substring(0, 100)}`;
       }
-      return { 
-        ok: false, 
+      return {
+        ok: false,
         error: errorMessage,
         responseCode: responseCode
       };
@@ -860,58 +967,19 @@ function _sendSmsTwilio_(to, body) {
   } catch (error) {
     Logger.log('❌ Erro crítico ao enviar SMS: ' + error.toString());
     Logger.log('📞 Stack: ' + error.stack);
-    
-    return { 
-      ok: false, 
+
+    return {
+      ok: false,
       error: 'Erro de conexão: ' + error.toString()
     };
   }
 }
 
-// ============================================
-// FUNÇÕES AUXILIARES MELHORADAS
-// ============================================
-
-function _formatE164_(phone) {
-  if (!phone) return '';
-  
-  try {
-    // Remover tudo que não é dígito
-    let cleaned = String(phone).replace(/\D/g, '');
-    
-    // Remover zeros à esquerda
-    cleaned = cleaned.replace(/^0+/, '');
-    
-    // Verificar se já tem DDI
-    if (!cleaned.startsWith('55')) {
-      cleaned = '55' + cleaned;
-    }
-    
-    // Validar comprimento mínimo (55 + DDD + número)
-    if (cleaned.length < 12) {
-      throw new Error('Número muito curto: ' + cleaned);
-    }
-    
-    // Validar comprimento máximo
-    if (cleaned.length > 13) {
-      // Número com nono dígito - manter apenas 13 caracteres
-      cleaned = cleaned.substring(0, 13);
-    }
-    
-    return '+' + cleaned;
-    
-  } catch (error) {
-    Logger.log('❌ Erro ao formatar telefone: ' + error.toString());
-    return '';
-  }
-}
-
 function _pickEmailFromRow_(headers, row) {
   const colMap = _colMap_(headers);
-  
-  // Tentar diferentes colunas de email
+
   const emailColumns = ['EMAIL', 'EMAIL1', 'EMAIL2', 'E_MAIL', 'E-MAIL'];
-  
+
   for (const colName of emailColumns) {
     if (colMap[colName] >= 0) {
       const email = String(row[colMap[colName]]).trim();
@@ -921,17 +989,16 @@ function _pickEmailFromRow_(headers, row) {
       }
     }
   }
-  
+
   Logger.log('⚠️ Nenhum email válido encontrado para o candidato');
   return null;
 }
 
 function _pickPhoneFromRow_(headers, row) {
   const colMap = _colMap_(headers);
-  
-  // Tentar diferentes colunas de telefone
+
   const phoneColumns = ['TELEFONE', 'CELULAR', 'PHONE', 'TELEFONE1', 'CELULAR1'];
-  
+
   for (const colName of phoneColumns) {
     if (colMap[colName] >= 0) {
       const phone = String(row[colMap[colName]]).trim();
@@ -941,7 +1008,7 @@ function _pickPhoneFromRow_(headers, row) {
       }
     }
   }
-  
+
   Logger.log('⚠️ Nenhum telefone válido encontrado para o candidato');
   return null;
 }
@@ -954,6 +1021,10 @@ function _applyTemplate_(text, candidate){
     .replace(/\[AREA\]/g, candidate.AREAATUACAO || '');
 }
 
+// ============================================
+// ENVIO DE MENSAGENS
+// ============================================
+
 function sendMessages(params) {
   Logger.log('📤 sendMessages iniciado');
 
@@ -962,6 +1033,7 @@ function sendMessages(params) {
   const content = params.content || '';
   const candidateIds = params.candidateIds || '';
   const sentBy = params.sentBy || 'system';
+  const fromAlias = params.fromAlias || '';
 
   if (!content) {
     throw new Error('Conteúdo da mensagem é obrigatório');
@@ -1015,7 +1087,7 @@ function sendMessages(params) {
       const personalizedSubject = _applyTemplate_(subject, candidate);
       const personalizedContent = _applyTemplate_(content, candidate);
 
-      result = _sendEmailGmail_(recipient, personalizedSubject, personalizedContent);
+      result = _sendEmailGmail_(recipient, personalizedSubject, personalizedContent, fromAlias);
 
       logMessage({
         registrationNumber: cpf,
@@ -1099,10 +1171,6 @@ function sendMessages(params) {
     results: results
   };
 }
-
-// ============================================
-// TESTE
-// ============================================
 
 function _updateMessageStatusInCandidates_(cpf, messageType) {
   try {
@@ -1210,74 +1278,6 @@ function updateMessageStatus(params) {
   } catch (error) {
     Logger.log('❌ Erro em updateMessageStatus: ' + error.toString());
     throw error;
-  }
-}
-
-function testConnection() {
-  return {
-    status: 'OK',
-    timestamp: getCurrentTimestamp(),
-    spreadsheetId: SPREADSHEET_ID
-  };
-}
-
-// ============================================
-// ADICIONAR COLUNAS
-// ============================================
-
-function addStatusColumnIfNotExists() {
-  const sh = _sheet(SHEET_CANDIDATOS);
-  const headers = _getHeaders_(sh);
-
-  const requiredColumns = [
-    'Status',
-    'Motivo Desclassificação',
-    'Observações',
-    'Data Triagem',
-    'Analista',
-    'EMAIL',
-    'TELEFONE',
-    'EMAIL_SENT',
-    'SMS_SENT',
-    'capacidade_tecnica',
-    'experiencia',
-    'pontuacao_triagem',
-    'status_entrevista',
-    'entrevistador',
-    'data_entrevista',
-    'interview_completed_at',
-    'interview_score',
-    'interview_result',
-    'interview_notes',
-    'formacao_adequada',
-    'graduacoes_competencias',
-    'descricao_processos',
-    'terminologia_tecnica',
-    'calma_clareza',
-    'escalas_flexiveis',
-    'adaptabilidade_mudancas',
-    'ajustes_emergencia',
-    'residencia',
-    'resolucao_conflitos',
-    'colaboracao_equipe',
-    'adaptacao_perfis'
-  ];
-
-  let added = false;
-  requiredColumns.forEach(colName => {
-    if (headers.indexOf(colName) === -1) {
-      const lastCol = sh.getLastColumn();
-      sh.getRange(1, lastCol + 1).setValue(colName);
-      Logger.log('➕ Coluna adicionada: ' + colName);
-      added = true;
-    }
-  });
-
-  if (added) {
-    _bumpRev_();
-    Logger.log('✅ Colunas adicionadas com sucesso');
-  } else {
-    Logger.log('✅ Todas as colunas já existem');
   }
 }
 
@@ -1485,6 +1485,7 @@ function getInterviewerCandidates(params) {
 }
 
 function allocateToInterviewer(params) {
+  const startTime = Date.now();
   try {
     const sh = _sheet(SHEET_CANDIDATOS);
     const headers = _getHeaders_(sh);
@@ -1494,58 +1495,108 @@ function allocateToInterviewer(params) {
     const dataEntrevistaCol = col['data_entrevista'];
     const cpfCol = col['CPF'];
 
-    if (entrevistadorCol === undefined || entrevistadorCol < 0) {
-      throw new Error('Coluna entrevistador não encontrada');
+    if (entrevistadorCol === undefined) {
+      throw new Error('Coluna "entrevistador" não encontrada na planilha');
     }
 
-    const candidateIds = String(params.candidateIds || '').split(',').map(s => s.trim()).filter(Boolean);
-    const interviewerEmail = params.interviewerEmail;
+    const candidateIds = String(params.candidateIds || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
 
-    Logger.log('📋 Alocando ' + candidateIds.length + ' candidatos para ' + interviewerEmail);
+    const interviewerEmail = String(params.interviewerEmail || '').trim();
+    const adminEmail = String(params.adminEmail || '').trim();
+
+    if (candidateIds.length === 0) {
+      return { success: false, error: 'Nenhum candidato selecionado' };
+    }
+    if (!interviewerEmail) {
+      return { success: false, error: 'E-mail do entrevistador não informado' };
+    }
+
+    Logger.log(`Alocando ${candidateIds.length} candidato(s) para: ${interviewerEmail}`);
 
     const lastRow = sh.getLastRow();
     if (lastRow <= HEADER_ROWS) {
-      return { success: true, allocatedCount: 0, message: 'Nenhum candidato para alocar' };
+      return { success: true, allocatedCount: 0, message: 'Nenhum candidato na planilha' };
     }
 
     const n = lastRow - HEADER_ROWS;
-    const cpfs = sh.getRange(HEADER_ROWS + 1, cpfCol + 1, n, 1).getValues().map(r => String(r[0]).trim());
-    const entrevistador = sh.getRange(HEADER_ROWS + 1, entrevistadorCol + 1, n, 1).getValues();
-    const dataEntrevista = dataEntrevistaCol >= 0 ? sh.getRange(HEADER_ROWS + 1, dataEntrevistaCol + 1, n, 1).getValues() : null;
+    const timestamp = getCurrentTimestamp();
 
-    const stamp = getCurrentTimestamp();
-    let allocatedCount = 0;
-    const pos = new Map();
-    for (let i = 0; i < cpfs.length; i++) {
-      pos.set(cpfs[i], i);
+    const startCol = Math.min(cpfCol, entrevistadorCol, dataEntrevistaCol ?? 999) + 1;
+    const numCols = 3;
+
+    const rawData = sh.getRange(HEADER_ROWS + 1, startCol, n, numCols).getValues();
+
+    const cpfIdx = cpfCol - (startCol - 1);
+    const entIdx = entrevistadorCol - (startCol - 1);
+    const dataIdx = dataEntrevistaCol !== undefined ? dataEntrevistaCol - (startCol - 1) : -1;
+
+    const cpfToRowIndex = new Map();
+    for (let i = 0; i < rawData.length; i++) {
+      const cpf = String(rawData[i][cpfIdx] || '').trim();
+      if (cpf) cpfToRowIndex.set(cpf, i);
     }
+
+    let allocatedCount = 0;
+    const rangesToUpdate = [];
 
     for (const cpf of candidateIds) {
-      const i = pos.get(cpf);
-      if (i === undefined) continue;
+      const rowIndex = cpfToRowIndex.get(cpf);
+      if (rowIndex === undefined) {
+        Logger.log(`CPF não encontrado: ${cpf}`);
+        continue;
+      }
 
-      entrevistador[i][0] = interviewerEmail;
-      if (dataEntrevista) dataEntrevista[i][0] = stamp;
+      if (rawData[rowIndex][entIdx] !== interviewerEmail) {
+        rawData[rowIndex][entIdx] = interviewerEmail;
+        rangesToUpdate.push(sh.getRange(HEADER_ROWS + 1 + rowIndex, entrevistadorCol + 1));
+      }
+
+      if (dataIdx >= 0 && rawData[rowIndex][dataIdx] !== timestamp) {
+        rawData[rowIndex][dataIdx] = timestamp;
+        if (!rangesToUpdate.includes(sh.getRange(HEADER_ROWS + 1 + rowIndex, dataEntrevistaCol + 1))) {
+          rangesToUpdate.push(sh.getRange(HEADER_ROWS + 1 + rowIndex, dataEntrevistaCol + 1));
+        }
+      }
+
       allocatedCount++;
+      Logger.log(`${cpf} → alocado para ${interviewerEmail}`);
     }
 
-    if (allocatedCount > 0) {
-      sh.getRange(HEADER_ROWS + 1, entrevistadorCol + 1, n, 1).setValues(entrevistador);
-      if (dataEntrevista && dataEntrevistaCol >= 0) {
-        sh.getRange(HEADER_ROWS + 1, dataEntrevistaCol + 1, n, 1).setValues(dataEntrevista);
+    if (rangesToUpdate.length > 0) {
+      const rangeList = sh.getRangeList(rangesToUpdate.map(r => r.getA1Notation()));
+      rangeList.getRanges()
+        .filter(r => r.getColumn() === entrevistadorCol + 1)
+        .forEach(r => r.setValue(interviewerEmail));
+
+      if (dataEntrevistaCol >= 0) {
+        rangeList.getRanges()
+          .filter(r => r.getColumn() === dataEntrevistaCol + 1)
+          .forEach(r => r.setValue(timestamp));
       }
+
       _bumpRev_();
     }
 
-    Logger.log('✅ Total alocados: ' + allocatedCount);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+    Logger.log(`Total alocados: ${allocatedCount} em ${elapsed}s`);
+
     return {
       success: true,
-      allocatedCount: allocatedCount,
-      message: allocatedCount + ' candidato(s) alocado(s) para entrevista'
+      allocatedCount,
+      message: `${allocatedCount} candidato(s) alocado(s) com sucesso para ${interviewerEmail}`
     };
+
   } catch (error) {
-    Logger.log('❌ Erro em allocateToInterviewer: ' + error.toString());
-    throw error;
+    Logger.log('Erro crítico em allocateToInterviewer: ' + error.toString());
+    Logger.log(error.stack);
+    return {
+      success: false,
+      error: 'Falha ao alocar candidatos',
+      details: error.toString()
+    };
   }
 }
 
@@ -1690,66 +1741,71 @@ function saveInterviewEvaluation(params) {
   }
 }
 
+// ============================================
+// RELATÓRIOS
+// ============================================
+
 function getReportStats(params) {
-  try {
-    Logger.log('📊 Gerando estatísticas de relatórios');
+  return AdvancedCacheService.getWithFallback(
+    CACHE_KEYS.STATS,
+    () => {
+      try {
+        Logger.log('Gerando estatísticas de relatórios (cache miss)');
 
-    const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
-    if (!sheet || !values.length) {
-      return {
-        classificados: 0,
-        desclassificados: 0,
-        entrevistaClassificados: 0,
-        entrevistaDesclassificados: 0
-      };
-    }
-
-    const col = _colMap_(headers);
-    const statusCol = col['Status'];
-    const statusEntrevistaCol = col['status_entrevista'];
-    const interviewResultCol = col['interview_result'];
-
-    let classificados = 0;
-    let desclassificados = 0;
-    let entrevistaClassificados = 0;
-    let entrevistaDesclassificados = 0;
-
-    for (let i = 0; i < values.length; i++) {
-      const status = values[i][statusCol] ? String(values[i][statusCol]).trim() : '';
-      const statusEntrevista = values[i][statusEntrevistaCol] ? String(values[i][statusEntrevistaCol]).trim() : '';
-      const interviewResult = values[i][interviewResultCol] ? String(values[i][interviewResultCol]).trim() : '';
-
-      if (status === 'Classificado') {
-        classificados++;
-      } else if (status === 'Desclassificado') {
-        desclassificados++;
-      }
-
-      if (statusEntrevista === 'Avaliado') {
-        if (interviewResult === 'Classificado') {
-          entrevistaClassificados++;
-        } else if (interviewResult === 'Desclassificado') {
-          entrevistaDesclassificados++;
+        const { sheet, headers, values } = _readSheetBlock_(SHEET_CANDIDATOS);
+        if (!sheet || !values.length) {
+          return {
+            classificados: 0,
+            desclassificados: 0,
+            entrevistaClassificados: 0,
+            entrevistaDesclassificados: 0
+          };
         }
+
+        const col = _colMap_(headers);
+        const statusCol = col['Status'];
+        const statusEntrevistaCol = col['status_entrevista'];
+        const interviewResultCol = col['interview_result'];
+
+        let classificados = 0;
+        let desclassificados = 0;
+        let entrevistaClassificados = 0;
+        let entrevistaDesclassificados = 0;
+
+        for (let i = 0; i < values.length; i++) {
+          const status = values[i][statusCol] ? String(values[i][statusCol]).trim() : '';
+          const statusEntrevista = values[i][statusEntrevistaCol] ? String(values[i][statusEntrevistaCol]).trim() : '';
+          const interviewResult = values[i][interviewResultCol] ? String(values[i][interviewResultCol]).trim() : '';
+
+          if (status === 'Classificado') classificados++;
+          else if (status === 'Desclassificado') desclassificados++;
+
+          if (statusEntrevista === 'Avaliado') {
+            if (interviewResult === 'Classificado') entrevistaClassificados++;
+            else if (interviewResult === 'Desclassificado') entrevistaDesclassificados++;
+          }
+        }
+
+        const result = {
+          classificados,
+          desclassificados,
+          entrevistaClassificados,
+          entrevistaDesclassificados
+        };
+
+        Logger.log('Estatísticas geradas e armazenadas no cache');
+        Logger.log(`   Classificados: ${classificados} | Desclassificados: ${desclassificados}`);
+        Logger.log(`   Entrevista Classificados: ${entrevistaClassificados} | Desclassificados: ${entrevistaDesclassificados}`);
+
+        return result;
+
+      } catch (error) {
+        Logger.log('Erro crítico em getReportStats (cache não será salvo): ' + error.toString());
+        throw error;
       }
-    }
-
-    Logger.log('✅ Estatísticas geradas');
-    Logger.log('   - Classificados: ' + classificados);
-    Logger.log('   - Desclassificados: ' + desclassificados);
-    Logger.log('   - Entrevista Classificados: ' + entrevistaClassificados);
-    Logger.log('   - Entrevista Desclassificados: ' + entrevistaDesclassificados);
-
-    return {
-      classificados: classificados,
-      desclassificados: desclassificados,
-      entrevistaClassificados: entrevistaClassificados,
-      entrevistaDesclassificados: entrevistaDesclassificados
-    };
-  } catch (error) {
-    Logger.log('❌ Erro em getReportStats: ' + error.toString());
-    throw error;
-  }
+    },
+    60
+  );
 }
 
 function getReport(params) {
@@ -1784,12 +1840,10 @@ function getReport(params) {
       const interviewResult = values[i][interviewResultCol] ? String(values[i][interviewResultCol]).trim() : '';
       const entrevistador = values[i][entrevistadorCol] ? String(values[i][entrevistadorCol]).toLowerCase().trim() : '';
 
-      // Aplicar filtro por analista, se fornecido
       if (analystEmail && analista !== analystEmail.toLowerCase().trim()) {
         continue;
       }
 
-      // Aplicar filtro por entrevistador, se fornecido
       if (interviewerEmail && entrevistador !== interviewerEmail.toLowerCase().trim()) {
         continue;
       }
@@ -1823,13 +1877,22 @@ function getReport(params) {
   }
 }
 
-
+// ============================================
+// TRIAGEM
+// ============================================
 
 function saveScreening(params) {
   try {
-    Logger.log('📝 Salvando triagem do candidato');
-    Logger.log('   - Candidato ID: ' + params.candidateId);
-    Logger.log('   - Status: ' + params.status);
+    Logger.log('═══════════════════════════════════════');
+    Logger.log('📝 INICIANDO saveScreening');
+    Logger.log('═══════════════════════════════════════');
+    Logger.log('📋 Parâmetros recebidos:');
+    Logger.log('   - candidateId: ' + params.candidateId);
+    Logger.log('   - registrationNumber: ' + params.registrationNumber);
+    Logger.log('   - cpf: ' + params.cpf);
+    Logger.log('   - status (RAW): "' + params.status + '"');
+    Logger.log('   - tipo do status: ' + typeof params.status);
+    Logger.log('   - analystEmail: ' + params.analystEmail);
 
     const sh = _sheet(SHEET_CANDIDATOS);
     const headers = _getHeaders_(sh);
@@ -1844,6 +1907,12 @@ function saveScreening(params) {
     const checkLaudoCol = col['check-laudo'];
     const checkCurriculoCol = col['check-curriculo'];
     const observacoesCol = col['Observações'];
+    const capacidadeTecnicaCol = col['capacidade_tecnica'];
+    const experienciaCol = col['experiencia'];
+    const pontuacaoTotalCol = col['pontuacao_triagem'];
+    const motivoCol = col['Motivo Desclassificação'];
+
+    Logger.log('📊 Índice da coluna Status: ' + statusCol);
 
     const idx = _getIndex_(sh, headers);
     const searchKey = String(params.candidateId || params.registrationNumber || params.cpf).trim();
@@ -1861,67 +1930,233 @@ function saveScreening(params) {
       throw new Error('Candidato não encontrado: ' + searchKey);
     }
 
-    Logger.log('📍 Atualizando candidato na linha: ' + row);
+    Logger.log('📍 Candidato encontrado na linha: ' + row);
 
     const lastCol = sh.getLastColumn();
     const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
 
-    if (statusCol >= 0) {
-      rowVals[statusCol] = params.status === 'classificado' ? 'Classificado' : 'Desclassificado';
+    // ✅ LÓGICA DE STATUS COM LOG DETALHADO
+    Logger.log('───────────────────────────────────────');
+    Logger.log('🔍 PROCESSANDO STATUS:');
+    Logger.log('   - Status recebido: "' + params.status + '"');
+    Logger.log('   - Comparação (params.status === "classificado"): ' + (params.status === 'classificado'));
+    Logger.log('   - Comparação (params.status === "desclassificado"): ' + (params.status === 'desclassificado'));
+
+    let statusFinal;
+    if (params.status === 'classificado') {
+      statusFinal = 'Classificado';
+      Logger.log('   ✅ Status será: Classificado');
+    } else if (params.status === 'desclassificado') {
+      statusFinal = 'Desclassificado';
+      Logger.log('   ❌ Status será: Desclassificado');
+    } else {
+      statusFinal = 'Desclassificado';
+      Logger.log('   ⚠️ Status não reconhecido, usando padrão: Desclassificado');
     }
 
+    if (statusCol >= 0) {
+      rowVals[statusCol] = statusFinal;
+      Logger.log('   📝 Status gravado na coluna ' + statusCol + ': "' + statusFinal + '"');
+    } else {
+      Logger.log('   ⚠️ Coluna Status não encontrada!');
+    }
+    Logger.log('───────────────────────────────────────');
+
+    // Analista
     if (analistaCol >= 0 && params.analystEmail) {
       rowVals[analistaCol] = params.analystEmail;
+      Logger.log('👤 Analista: ' + params.analystEmail);
     }
 
+    // Data triagem
     if (dataTriagemCol >= 0) {
       rowVals[dataTriagemCol] = params.screenedAt || getCurrentTimestamp();
+      Logger.log('📅 Data triagem: ' + rowVals[dataTriagemCol]);
     }
 
-    // Novos campos de verificação - USE COLCHETES para acessar propriedades com hífens
-    if (checkRgCpfCol >= 0 && params['checkrg-cpf'] !== undefined) {
-      rowVals[checkRgCpfCol] = params['checkrg-cpf'];
+    // Documentos
+    Logger.log('📋 Salvando documentos:');
+    const updateDocument = (colIndex, value, fieldName) => {
+      if (colIndex >= 0 && value !== undefined && value !== null) {
+        let convertedValue = '';
+        switch (value) {
+          case 'conforme':
+            convertedValue = 'Sim';
+            break;
+          case 'nao_conforme':
+            convertedValue = 'Não';
+            break;
+          case 'nao_se_aplica':
+          case null:
+            convertedValue = 'Não se aplica';
+            break;
+          default:
+            convertedValue = String(value || '');
+        }
+        rowVals[colIndex] = convertedValue;
+        Logger.log(`   - ${fieldName}: ${convertedValue} (original: ${value})`);
+      }
+    };
+
+    updateDocument(checkRgCpfCol, params['checkrg-cpf'], 'RG/CPF');
+    updateDocument(checkCnhCol, params['check-cnh'], 'CNH');
+    updateDocument(checkExperienciaCol, params['check-experiencia'], 'Experiência');
+    updateDocument(checkRegularidadeCol, params['check-regularidade'], 'Regularidade');
+    updateDocument(checkLaudoCol, params['check-laudo'], 'Laudo PCD');
+    updateDocument(checkCurriculoCol, params['check-curriculo'], 'Currículo');
+
+    // Avaliação técnica (apenas para classificados)
+    if (statusFinal === 'Classificado') {
+      if (capacidadeTecnicaCol >= 0 && params.capacidade_tecnica !== undefined) {
+        rowVals[capacidadeTecnicaCol] = Number(params.capacidade_tecnica) || 0;
+        Logger.log('   - Capacidade técnica: ' + rowVals[capacidadeTecnicaCol]);
+      }
+      if (experienciaCol >= 0 && params.experiencia !== undefined) {
+        rowVals[experienciaCol] = Number(params.experiencia) || 0;
+        Logger.log('   - Experiência: ' + rowVals[experienciaCol]);
+      }
+      if (pontuacaoTotalCol >= 0) {
+        const total = (Number(params.capacidade_tecnica) || 0) + (Number(params.experiencia) || 0);
+        rowVals[pontuacaoTotalCol] = total;
+        Logger.log('   - Total score: ' + total);
+      }
     }
 
-    if (checkCnhCol >= 0 && params['check-cnh'] !== undefined) {
-      rowVals[checkCnhCol] = params['check-cnh'];
+    // Motivo desclassificação (apenas para desclassificados)
+    if (statusFinal === 'Desclassificado' && motivoCol >= 0) {
+      let motivo = '';
+      const docsNaoConformes = [];
+
+      if (params['checkrg-cpf'] === 'nao_conforme') docsNaoConformes.push('RG/CPF');
+      if (params['check-cnh'] === 'nao_conforme') docsNaoConformes.push('CNH');
+      if (params['check-experiencia'] === 'nao_conforme') docsNaoConformes.push('Experiência Profissional');
+      if (params['check-regularidade'] === 'nao_conforme') docsNaoConformes.push('Regularidade Profissional');
+      if (params['check-laudo'] === 'nao_conforme') docsNaoConformes.push('Laudo PCD');
+      if (params['check-curriculo'] === 'nao_conforme') docsNaoConformes.push('Currículo');
+
+      if (docsNaoConformes.length > 0) {
+        motivo = `Documentos não conformes: ${docsNaoConformes.join(', ')}`;
+      }
+
+      if (params.disqualification_reason) {
+        motivo = motivo ? `${motivo} | ${params.disqualification_reason}` : params.disqualification_reason;
+      }
+
+      if (!motivo) {
+        motivo = 'Desclassificado pelo analista';
+      }
+
+      rowVals[motivoCol] = motivo;
+      Logger.log('📝 Motivo desclassificação: ' + motivo);
     }
 
-    if (checkExperienciaCol >= 0 && params['check-experiencia'] !== undefined) {
-      rowVals[checkExperienciaCol] = params['check-experiencia'];
-    }
-
-    if (checkRegularidadeCol >= 0 && params['check-regularidade'] !== undefined) {
-      rowVals[checkRegularidadeCol] = params['check-regularidade'];
-    }
-
-    if (checkLaudoCol >= 0 && params['check-laudo'] !== undefined) {
-      rowVals[checkLaudoCol] = params['check-laudo'];
-    }
-
-    if (checkCurriculoCol >= 0 && params['check-curriculo'] !== undefined) {
-      rowVals[checkCurriculoCol] = params['check-curriculo'];
-    }
-
+    // Observações
     if (observacoesCol >= 0 && params.notes) {
       rowVals[observacoesCol] = params.notes;
+      Logger.log('📝 Observações salvas');
     }
 
+    // Salvar
     _writeWholeRow_(sh, row, rowVals);
     _bumpRev_();
 
-    Logger.log('✅ Triagem salva com sucesso');
-    Logger.log('   - Status: ' + rowVals[statusCol]);
+    Logger.log('═══════════════════════════════════════');
+    Logger.log('✅ TRIAGEM SALVA COM SUCESSO');
+    Logger.log('   - Status final gravado: "' + statusFinal + '"');
+    Logger.log('   - Linha: ' + row);
+    Logger.log('═══════════════════════════════════════');
 
     return {
       success: true,
       message: 'Triagem salva com sucesso',
       candidateId: searchKey,
-      status: rowVals[statusCol]
+      status: statusFinal
     };
   } catch (error) {
-    Logger.log('❌ Erro em saveScreening: ' + error.toString());
+    Logger.log('═══════════════════════════════════════');
+    Logger.log('❌ ERRO EM saveScreening');
+    Logger.log('   Erro: ' + error.toString());
     Logger.log('   Stack: ' + error.stack);
-    throw error;
+    Logger.log('═══════════════════════════════════════');
+
+    return {
+      success: false,
+      error: 'Falha ao salvar triagem: ' + error.toString(),
+      details: error.stack
+    };
   }
+}
+
+// ============================================
+// UTILITÁRIOS
+// ============================================
+
+function addStatusColumnIfNotExists() {
+  const sh = _sheet(SHEET_CANDIDATOS);
+  const headers = _getHeaders_(sh);
+
+  const requiredColumns = [
+    'Status',
+    'Motivo Desclassificação',
+    'Observações',
+    'Data Triagem',
+    'Analista',
+    'EMAIL',
+    'TELEFONE',
+    'EMAIL_SENT',
+    'SMS_SENT',
+    'capacidade_tecnica',
+    'experiencia',
+    'pontuacao_triagem',
+    'status_entrevista',
+    'entrevistador',
+    'data_entrevista',
+    'interview_completed_at',
+    'interview_score',
+    'interview_result',
+    'interview_notes',
+    'formacao_adequada',
+    'graduacoes_competencias',
+    'descricao_processos',
+    'terminologia_tecnica',
+    'calma_clareza',
+    'escalas_flexiveis',
+    'adaptabilidade_mudancas',
+    'ajustes_emergencia',
+    'residencia',
+    'resolucao_conflitos',
+    'colaboracao_equipe',
+    'adaptacao_perfis',
+    'checkrg-cpf',
+    'check-cnh',
+    'check-experiencia',
+    'check-regularidade',
+    'check-laudo',
+    'check-curriculo'
+  ];
+
+  let added = false;
+  requiredColumns.forEach(colName => {
+    if (headers.indexOf(colName) === -1) {
+      const lastCol = sh.getLastColumn();
+      sh.getRange(1, lastCol + 1).setValue(colName);
+      Logger.log('➕ Coluna adicionada: ' + colName);
+      added = true;
+    }
+  });
+
+  if (added) {
+    _bumpRev_();
+    Logger.log('✅ Colunas adicionadas com sucesso');
+  } else {
+    Logger.log('✅ Todas as colunas já existem');
+  }
+}
+
+function testConnection() {
+  return {
+    status: 'OK',
+    timestamp: getCurrentTimestamp(),
+    spreadsheetId: SPREADSHEET_ID
+  };
 }
