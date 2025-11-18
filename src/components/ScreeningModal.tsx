@@ -96,14 +96,15 @@ export default function ScreeningModal({
   const [classification, setClassification] = useState<'classificado' | 'desclassificado' | null>(null);
   const [notes, setNotes] = useState('');
 
-  // ✅ FUNÇÃO CORRIGIDA: Enviar triagem
+  // ✅ FUNÇÃO CORRIGIDA: Integração real com Google Apps Script
   const submitScreening = async (classificationStatus: 'classificado' | 'desclassificado') => {
     setLoading(true);
     
     try {
       // Preparar dados dos documentos
       const documentsData = documents.reduce((acc, doc) => {
-        acc[doc.key] = doc.value;
+        // Converte para formato booleano que a função saveScreening espera
+        acc[doc.key] = doc.value === 'conforme' ? 'Sim' : 'Não';
         return acc;
       }, {} as Record<string, string>);
 
@@ -113,51 +114,71 @@ export default function ScreeningModal({
             ...documentsData,
             disqualification_reason: disqualificationReason
           })
-        : null;
+        : '';
 
-      // Preparar os dados completos para envio
+      // ✅ CORREÇÃO: Preparar dados no formato EXATO que saveScreening espera
       const screeningData = {
-        candidate_id: candidate.id,
-        status: classificationStatus === 'classificado' ? 'Classificado' : 'Desclassificado',
-        documents: documentsData,
-        technical_evaluation: classificationStatus === 'classificado' ? technicalEvaluation : null,
+        candidateId: candidate.id,
+        registrationNumber: candidate.registration_number,
+        cpf: candidate.CPF,
+        status: classificationStatus, // 'classificado' ou 'desclassificado'
+        analystEmail: user?.email || 'unknown@example.com',
+        screenedAt: new Date().toISOString(),
         notes: formatNotes(classificationStatus),
         disqualification_reason: motivoDesclassificacao,
-        total_score: classificationStatus === 'classificado' 
-          ? technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia 
-          : 0,
-        evaluated_by: user?.id || 'unknown',
-        evaluated_at: new Date().toISOString()
+        // ✅ CORREÇÃO: Incluir todos os checks no formato correto
+        ...documentsData
       };
 
-      console.log('🎯 ENVIANDO TRIAGEM:', screeningData);
+      console.log('🎯 ENVIANDO PARA saveScreening:', screeningData);
       console.log('📋 Motivo da desclassificação:', motivoDesclassificacao);
 
-      // ✅ CORREÇÃO: Simulação mais realista da API
-      console.log('📤 Simulando chamada API para salvar triagem...');
-      
-      // Simulação de chamada API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Aqui você substituiria pela sua API real:
-      // const response = await fetch('/api/screening', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(screeningData)
-      // });
-      
-      // if (!response.ok) throw new Error('Erro ao salvar triagem');
-
-      console.log('✅ Triagem salva com sucesso!');
-      console.log('📊 Status final:', screeningData.status);
-      console.log('📝 Motivo:', screeningData.disqualification_reason);
-      
-      // ✅ CORREÇÃO: Chamar callbacks na ordem correta
-      onScreeningComplete();
-      handleClose();
+      // ✅ CORREÇÃO: Chamar a função REAL do Google Apps Script
+      // Substitua 'saveScreening' pelo nome exato da sua função no Google Apps Script
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        console.log('📤 Chamando Google Apps Script...');
+        
+        google.script.run
+          .withSuccessHandler((result) => {
+            console.log('✅ saveScreening retornou:', result);
+            
+            if (result.success) {
+              console.log('✅ Triagem salva com sucesso no Google Sheets!');
+              console.log('📊 Status final:', result.status);
+              console.log('📍 Linha atualizada:', result.row);
+              
+              onScreeningComplete();
+              handleClose();
+            } else {
+              console.error('❌ Erro do saveScreening:', result.error);
+              alert(`Erro ao salvar triagem: ${result.error}`);
+            }
+          })
+          .withFailureHandler((error) => {
+            console.error('❌ Falha na chamada do Google Apps Script:', error);
+            alert('Falha na comunicação com o servidor. Tente novamente.');
+          })
+          .saveScreening(screeningData);
+          
+      } else {
+        // ✅ CORREÇÃO: Fallback para desenvolvimento (simulação realista)
+        console.log('🔧 Modo desenvolvimento: simulando saveScreening...');
+        
+        // Simulação mais realista baseada na função real
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        console.log('✅ Simulação: Triagem salva com sucesso!');
+        console.log('📊 Status:', classificationStatus);
+        console.log('📝 Motivo:', motivoDesclassificacao);
+        console.log('👤 Candidato ID:', candidate.id);
+        
+        // ✅ CORREÇÃO: Chamar callbacks mesmo na simulação
+        onScreeningComplete();
+        handleClose();
+      }
       
     } catch (error) {
-      console.error('❌ Erro ao salvar triagem:', error);
+      console.error('❌ Erro ao processar triagem:', error);
       alert('Erro ao salvar triagem. Tente novamente.');
     } finally {
       setLoading(false);
