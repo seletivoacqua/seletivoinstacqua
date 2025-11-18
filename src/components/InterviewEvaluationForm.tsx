@@ -152,7 +152,7 @@ export default function InterviewEvaluationForm({
           <div className="space-y-6">
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                1. Relação entre Formação e Experiências (Máximo 20 pontos) - Total: {scores.secao1}
+                1. Relação entre Formação e Experiências (Máximo 10 pontos) - Total: {scores.secao1}
               </h3>
               <div className="space-y-4">
                 <div>
@@ -201,7 +201,7 @@ export default function InterviewEvaluationForm({
 
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                2. Desenvoltura de Comunicação (Máximo 30 pontos) - Total: {scores.secao2}
+                2. Desenvoltura de Comunicação (Máximo 15 pontos) - Total: {scores.secao2}
               </h3>
               <div className="space-y-4">
                 <div>
@@ -368,7 +368,7 @@ export default function InterviewEvaluationForm({
 
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 30 pontos) - Total: {scores.secao5}
+                5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 15 pontos) - Total: {scores.secao5}
               </h3>
               <div className="space-y-4">
                 <div>
