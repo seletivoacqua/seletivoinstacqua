@@ -99,54 +99,57 @@ export default function ScreeningModal({
   // ✅ FUNÇÃO CORRIGIDA: Integração real com Google Apps Script
   const submitScreening = async (classificationStatus: 'classificado' | 'desclassificado') => {
     setLoading(true);
-    
+
     try {
-      // Preparar dados dos documentos
+      // ✅ CORREÇÃO: Preparar dados dos documentos no formato EXATO que saveScreening espera
       const documentsData = documents.reduce((acc, doc) => {
-        // Converte para formato booleano que a função saveScreening espera
-        acc[doc.key] = doc.value === 'conforme' ? 'Sim' : 'Não';
+        // Mantém os valores originais: 'conforme', 'nao_conforme', 'nao_se_aplica'
+        acc[doc.key] = doc.value;
         return acc;
       }, {} as Record<string, string>);
 
-      // ✅ CORREÇÃO: Usar a função auxiliar para gerar o motivo
-      const motivoDesclassificacao = classificationStatus === 'desclassificado' 
-        ? gerarMotivoDesclassificacaoAutomatico({
-            ...documentsData,
-            disqualification_reason: disqualificationReason
-          })
-        : '';
+      console.log('📋 Dados dos documentos:', documentsData);
 
       // ✅ CORREÇÃO: Preparar dados no formato EXATO que saveScreening espera
-      const screeningData = {
+      const screeningData: any = {
         candidateId: candidate.id,
         registrationNumber: candidate.registration_number,
         cpf: candidate.CPF,
         status: classificationStatus, // 'classificado' ou 'desclassificado'
         analystEmail: user?.email || 'unknown@example.com',
         screenedAt: new Date().toISOString(),
-        notes: formatNotes(classificationStatus),
-        disqualification_reason: motivoDesclassificacao,
-        // ✅ CORREÇÃO: Incluir todos os checks no formato correto
+        notes: notes || '',
+        // ✅ Incluir todos os checks no formato correto
         ...documentsData
       };
 
+      // ✅ ADICIONAR MOTIVO DE DESCLASSIFICAÇÃO se for desclassificado
+      if (classificationStatus === 'desclassificado') {
+        screeningData.disqualification_reason = disqualificationReason || '';
+      }
+
+      // ✅ ADICIONAR AVALIAÇÃO TÉCNICA se for classificado
+      if (classificationStatus === 'classificado') {
+        screeningData.capacidade_tecnica = technicalEvaluation.capacidade_tecnica;
+        screeningData.experiencia = technicalEvaluation.experiencia;
+      }
+
       console.log('🎯 ENVIANDO PARA saveScreening:', screeningData);
-      console.log('📋 Motivo da desclassificação:', motivoDesclassificacao);
 
       // ✅ CORREÇÃO: Chamar a função REAL do Google Apps Script
-      // Substitua 'saveScreening' pelo nome exato da sua função no Google Apps Script
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         console.log('📤 Chamando Google Apps Script...');
-        
+
         google.script.run
           .withSuccessHandler((result) => {
             console.log('✅ saveScreening retornou:', result);
-            
+            setLoading(false);
+
             if (result.success) {
               console.log('✅ Triagem salva com sucesso no Google Sheets!');
               console.log('📊 Status final:', result.status);
-              console.log('📍 Linha atualizada:', result.row);
-              
+
+              alert(`Triagem salva com sucesso! Status: ${result.status}`);
               onScreeningComplete();
               handleClose();
             } else {
@@ -156,31 +159,32 @@ export default function ScreeningModal({
           })
           .withFailureHandler((error) => {
             console.error('❌ Falha na chamada do Google Apps Script:', error);
+            setLoading(false);
             alert('Falha na comunicação com o servidor. Tente novamente.');
           })
           .saveScreening(screeningData);
-          
+
       } else {
         // ✅ CORREÇÃO: Fallback para desenvolvimento (simulação realista)
         console.log('🔧 Modo desenvolvimento: simulando saveScreening...');
-        
+
         // Simulação mais realista baseada na função real
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         console.log('✅ Simulação: Triagem salva com sucesso!');
         console.log('📊 Status:', classificationStatus);
-        console.log('📝 Motivo:', motivoDesclassificacao);
         console.log('👤 Candidato ID:', candidate.id);
-        
+
+        alert(`[SIMULAÇÃO] Triagem salva com sucesso! Status: ${classificationStatus}`);
+
         // ✅ CORREÇÃO: Chamar callbacks mesmo na simulação
         onScreeningComplete();
         handleClose();
       }
-      
+
     } catch (error) {
       console.error('❌ Erro ao processar triagem:', error);
       alert('Erro ao salvar triagem. Tente novamente.');
-    } finally {
       setLoading(false);
     }
   };
