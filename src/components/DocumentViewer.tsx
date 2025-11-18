@@ -11,7 +11,8 @@ import {
   AlertCircle,
   User,
   Stethoscope,
-  Briefcase
+  Briefcase,
+  ShieldCheck
 } from 'lucide-react';
 
 interface DocumentViewerProps {
@@ -79,11 +80,23 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
       url: candidate.EXPERIENCIAPROFISSIONAL,
       icon: <Briefcase className="w-5 h-5" /> 
     },
-    { 
-      key: 'laudo_medico', 
-      label: 'Laudo Médico', 
+    {
+      key: 'laudo_medico',
+      label: 'Laudo Médico',
       url: candidate.LAUDOMEDICO,
-      icon: <Stethoscope className="w-5 h-5" /> 
+      icon: <Stethoscope className="w-5 h-5" />
+    },
+    {
+      key: 'reservista',
+      label: 'Reservista',
+      url: candidate.RESERVISTA,
+      icon: <ShieldCheck className="w-5 h-5" />
+    },
+    {
+      key: 'cartao_sus',
+      label: 'Cartão SUS',
+      url: candidate.CARTAOSUS,
+      icon: <CreditCard className="w-5 h-5" />
     }
   ];
 

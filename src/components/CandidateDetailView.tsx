@@ -62,6 +62,8 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
       DIPLOMACERTIFICADO: 'DIPLOMA/CERTIFICADO',
       DOCUMENTOSCONSELHO: 'DOCUMENTOS DO CONSELHO',
       EXPERIENCIAPROFISSIONAL: 'EXPERIÊNCIA PROFISSIONAL',
+      RESERVISTA: 'RESERVISTA',
+      CARTAOSUS: 'CARTÃO SUS',
     
       
       // Campos de sistema
@@ -109,7 +111,9 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
     'COPIACPF',
     'DIPLOMACERTIFICADO',
     'DOCUMENTOSCONSELHO',
-    'EXPERIENCIAPROFISSIONAL'
+    'EXPERIENCIAPROFISSIONAL',
+    'RESERVISTA',
+    'CARTAOSUS'
   ]);
 
   const systemFields = createOrderedFields([

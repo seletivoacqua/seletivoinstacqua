@@ -31,6 +31,8 @@ export interface Candidate {
   DIPLOMACERTIFICADO?: string;
   DOCUMENTOSCONSELHO?: string;
   ESPECIALIZACOESCURSOS?: string;
+  RESERVISTA?: string;
+  CARTAOSUS?: string;
   status?: string;
   Status?: string;
   statusTriagem?: string;
