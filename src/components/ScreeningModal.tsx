@@ -110,9 +110,11 @@ export default function ScreeningModal({
       if (classificationStatus === 'classificado') {
         screeningData.capacidade_tecnica = technicalEvaluation.capacidade_tecnica;
         screeningData.experiencia = technicalEvaluation.experiencia;
+        screeningData.pontuacao_triagem = technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia;
         console.log('✅ Avaliação técnica:', {
           capacidade: screeningData.capacidade_tecnica,
-          experiencia: screeningData.experiencia
+          experiencia: screeningData.experiencia,
+          total: screeningData.pontuacao_triagem
         });
       }
 

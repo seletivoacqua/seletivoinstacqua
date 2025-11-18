@@ -55,6 +55,11 @@ export interface Candidate {
   screened_at?: string;
   data_hora_triagem?: string;
 
+  // Campos de triagem
+  capacidade_tecnica?: number;
+  experiencia?: number;
+  pontuacao_triagem?: number;
+
   // Campos de entrevista
   entrevistador?: string;
   Entrevistador?: string;
