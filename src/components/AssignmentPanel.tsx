@@ -12,7 +12,7 @@ interface AssignmentPanelProps {
 function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps) {
   const [analysts, setAnalysts] = useState<User[]>([]);
   const [unassignedCandidates, setUnassignedCandidates] = useState<Candidate[]>([]);
-  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set()); // Agora armazena CPFs
   const [selectedAnalyst, setSelectedAnalyst] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [loadingAnalysts, setLoadingAnalysts] = useState(false);
@@ -21,7 +21,6 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    console.log('AssignmentPanel - Iniciando carregamento');
     loadAnalysts();
     loadUnassignedCandidates();
   }, [page]);
@@ -30,29 +29,13 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     try {
       setLoadingAnalysts(true);
       setError('');
-      console.log('========================================');
-      console.log('[AssignmentPanel] Iniciando carregamento de analistas...');
-      console.log('========================================');
       const data = await getAnalysts();
-      console.log('========================================');
-      console.log('✅ [AssignmentPanel] Analistas recebidos:', data);
-      console.log('Total de analistas:', data.length);
-      console.log('É array?', Array.isArray(data));
-      if (data.length > 0) {
-        console.log('Primeiro analista:', data[0]);
-      }
-      console.log('========================================');
       setAnalysts(data);
       if (data.length === 0) {
-        const msg = 'Nenhum analista encontrado. Verifique se há analistas cadastrados no sistema.';
-        console.warn('⚠️ [AssignmentPanel]', msg);
-        setError(msg);
+        setError('Nenhum analista encontrado. Verifique se há analistas cadastrados no sistema.');
       }
     } catch (error) {
-      console.error('========================================');
       console.error('Erro ao carregar analistas:', error);
-      console.error('Mensagem:', error instanceof Error ? error.message : String(error));
-      console.error('========================================');
       setError('Erro ao carregar lista de analistas. Tente novamente.');
       setAnalysts([]);
     } finally {
@@ -74,36 +57,38 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     }
   }
 
-  // Função única e limpa para toggle
-  function toggleCandidate(id: string) {
+  // Toggle usando CPF como identificador único
+  const toggleCandidate = (cpf: string) => {
     setSelectedCandidates(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(cpf)) {
+        next.delete(cpf);
       } else {
-        next.add(id);
+        next.add(cpf);
       }
       return next;
     });
-  }
+  };
 
   async function handleAssign() {
     if (!selectedAnalyst || selectedCandidates.size === 0) {
       alert('Selecione um analista e pelo menos um candidato');
       return;
     }
+
     try {
       setLoading(true);
       await assignCandidates({
-        candidateIds: Array.from(selectedCandidates),
+        candidateIds: Array.from(selectedCandidates), // Agora são CPFs
         analystId: selectedAnalyst,
         adminId,
       });
+
       setSelectedCandidates(new Set());
       setSelectedAnalyst('');
       await loadUnassignedCandidates();
       onAssignmentComplete();
-      alert(`${selectedCandidates.size} candidato(s) alocado(s) com sucesso para o analista!`);
+      alert(`${selectedCandidates.size} candidato(s) alocado(s) com sucesso!`);
     } catch (error) {
       console.error('Erro ao alocar candidatos:', error);
       alert('Erro ao alocar candidatos');
@@ -175,46 +160,48 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               </div>
             ) : (
               <div className="space-y-2">
-                {unassignedCandidates.map(candidate => (
-                  <div
-                    key={candidate.id}
-                    className={`p-4 rounded-lg border-2 transition-all ${
-                      selectedCandidates.has(candidate.id)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Checkbox controlando tudo diretamente via onChange */}
-                      <label className="flex items-center cursor-pointer select-none mt-0.5">
-                        <input
-                          type="checkbox"
-                          checked={selectedCandidates.has(candidate.id)}
-                          onChange={() => toggleCandidate(candidate.id)}
-                          className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
-                        />
-                      </label>
+                {unassignedCandidates.map(candidate => {
+                  const cpf = candidate.CPF;
 
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-800">
-                          {candidate.NOMECOMPLETO || candidate.name}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          CPF: {candidate.CPF || candidate.registration_number} •
-                          Área: {candidate.AREAATUACAO || 'Não informada'}
-                        </div>
-                        {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Cargos:
-                            {candidate.CARGOADMIN && ` Admin: ${candidate.CARGOADMIN}`}
-                            {candidate.CARGOADMIN && candidate.CARGOASSIS && ' | '}
-                            {candidate.CARGOASSIS && ` Assis: ${candidate.CARGOASSIS}`}
+                  return (
+                    <div
+                      key={cpf}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedCandidates.has(cpf)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <label className="flex items-center cursor-pointer select-none mt-0.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidates.has(cpf)}
+                            onChange={() => toggleCandidate(cpf)}
+                            className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                        </label>
+
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">
+                            {candidate.NOMECOMPLETO || candidate.name}
                           </div>
-                        )}
+                          <div className="text-sm text-gray-600 mt-1">
+                            CPF: {cpf} • Área: {candidate.AREAATUACAO || 'Não informada'}
+                          </div>
+                          {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Cargos:
+                              {candidate.CARGOADMIN && ` Admin: ${candidate.CARGOADMIN}`}
+                              {candidate.CARGOADMIN && candidate.CARGOASSIS && ' | '}
+                              {candidate.CARGOASSIS && ` Assis: ${candidate.CARGOASSIS}`}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -241,7 +228,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
             )}
           </div>
 
-          {/* Painel lateral - mantido 100% igual */}
+          {/* Painel lateral - sem alterações */}
           <div className="space-y-4">
             <div className="bg-white border rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Alocar para Analista</h3>
@@ -280,7 +267,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                   </div>
                   {selectedCandidates.size > 0 && (
                     <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                      {selectedCandidates.size} candidato(s) pronto(s) para alocação
+                      ✅ {selectedCandidates.size} candidato(s) pronto(s) para alocação
                     </div>
                   )}
                 </div>
@@ -308,9 +295,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
             <div className="bg-gray-50 border rounded-lg p-4">
               <h4 className="font-semibold text-gray-800 mb-3">Carga de Trabalho</h4>
               {analysts.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-2">
-                  Nenhum analista carregado
-                </p>
+                <p className="text-sm text-gray-500 text-center py-2">Nenhum analista carregado</p>
               ) : (
                 <div className="space-y-2">
                   {analysts.map(analyst => (
