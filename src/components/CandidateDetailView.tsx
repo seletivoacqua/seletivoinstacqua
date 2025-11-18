@@ -50,9 +50,10 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
       VAGAPCD: 'VAGA PCD',
       LAUDOMEDICO: 'LAUDO MÉDICO',
       
-      // Área e Cargo
+      // Área e Cargo - ATUALIZADO
       AREAATUACAO: 'ÁREA DE ATUAÇÃO',
-      CARGOPRETENDIDO: 'CARGO PRETENDIDO',
+      CARGOADMIN: 'CARGO ADMINISTRATIVO', // NOVO CAMPO
+      CARGOASSIS: 'CARGO ASSISTENCIAL',   // NOVO CAMPO
       
       // Documentos
       CURRICULOVITAE: 'CURRÍCULO VITAE',
@@ -64,7 +65,6 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
       EXPERIENCIAPROFISSIONAL: 'EXPERIÊNCIA PROFISSIONAL',
       RESERVISTA: 'RESERVISTA',
       CARTAOSUS: 'CARTÃO SUS',
-    
       
       // Campos de sistema
       Status: 'STATUS',
@@ -91,7 +91,7 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
     })).filter(field => field.value !== null);
   };
 
-  // Definindo as seções com as NOVAS colunas
+  // Definindo as seções com as NOVAS colunas - ATUALIZADO
   const personalFields = createOrderedFields([
     'NOMECOMPLETO', 
     'NOMESOCIAL', 
@@ -102,7 +102,8 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
 
   const areaCargoFields = createOrderedFields([
     'AREAATUACAO',
-    'CARGOPRETENDIDO'
+    'CARGOADMIN',   // SUBSTITUI CARGOPRETENDIDO
+    'CARGOASSIS'    // NOVO CAMPO ADICIONADO
   ]);
 
   const documentosFields = createOrderedFields([
@@ -138,7 +139,7 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
     }
   };
 
- const getCandidateName = () => {
+  const getCandidateName = () => {
     return candidate.NOMECOMPLETO || candidate.nomeCompleto || candidate.NomeCompleto || 'Nome não informado';
   };
 
