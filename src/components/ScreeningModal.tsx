@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface Candidate {
   id: string;
   full_name?: string;
-  nome_completo?: string;
+  NOMECOMPLETO?: string;
   registration_number?: string;
   CPF?: string;
   NOMESOCIAL?: string;
@@ -287,7 +287,7 @@ export default function ScreeningModal({
 
   // Funções para obter informações do candidato
   const getCandidateName = () => {
-    return candidate.nome_completo || candidate.full_name || 'Candidato';
+    return candidate.NOMESOCIAL || candidate.full_name || 'Candidato';
   };
 
   const getNomeSocial = () => {
