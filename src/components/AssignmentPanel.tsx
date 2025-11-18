@@ -91,8 +91,16 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     setSelectedCandidates(newSelection);
   }
 
-  // ✅ CORREÇÃO: Removida a função selectAll() que selecionava todos
-  // Agora apenas seleção individual é permitida
+  // ✅ CORREÇÃO: Função para lidar apenas com o clique no checkbox
+  function handleCheckboxClick(e: React.MouseEvent, id: string) {
+    e.stopPropagation(); // Impede que o evento chegue no container
+    toggleCandidate(id);
+  }
+
+  // ✅ CORREÇÃO: Função para lidar com o clique no container (linha)
+  function handleRowClick(id: string) {
+    toggleCandidate(id);
+  }
 
   async function handleAssign() {
     if (!selectedAnalyst || selectedCandidates.size === 0) {
@@ -173,9 +181,8 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               <h3 className="text-lg font-semibold text-gray-800">
                 Candidatos Não Alocados ({unassignedCandidates.length})
               </h3>
-              {/* ✅ REMOVIDO: Botão "Selecionar Todos" */}
               <div className="text-sm text-gray-500">
-                Selecione individualmente os candidatos
+                Clique nos candidatos para selecionar
               </div>
             </div>
 
@@ -192,7 +199,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 {unassignedCandidates.map(candidate => (
                   <div
                     key={candidate.id}
-                    onClick={() => toggleCandidate(candidate.id)}
+                    onClick={() => handleRowClick(candidate.id)}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       selectedCandidates.has(candidate.id)
                         ? 'border-blue-500 bg-blue-50'
@@ -200,13 +207,18 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedCandidates.has(candidate.id)}
-                        onChange={() => toggleCandidate(candidate.id)}
-                        className="mt-1"
-                        // ✅ Agora cada checkbox é independente
-                      />
+                      {/* ✅ CORREÇÃO: Checkbox com stopPropagation */}
+                      <div 
+                        onClick={(e) => handleCheckboxClick(e, candidate.id)}
+                        className="flex items-center"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCandidates.has(candidate.id)}
+                          onChange={() => {}} // Empty handler - we handle via click
+                          className="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                      </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-800">
                           {candidate.NOMECOMPLETO || candidate.name}
@@ -215,7 +227,6 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                           CPF: {candidate.CPF || candidate.registration_number} • 
                           Área: {candidate.AREAATUACAO || 'Não informada'}
                         </div>
-                        {/* ✅ ADICIONADO: Exibição dos cargos atualizados */}
                         {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
                           <div className="text-xs text-gray-500 mt-1">
                             Cargos: 
