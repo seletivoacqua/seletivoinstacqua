@@ -189,31 +189,41 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
           </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mt-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="text-sm text-gray-600">Total</div>
-            <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
-          </div>
-          <div className="bg-yellow-50 rounded-lg p-4">
-            <div className="text-sm text-yellow-800 flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              Pendente
-            </div>
-            <div className="text-2xl font-bold text-yellow-800">{stats.pendente}</div>
-          </div>
+        <div className="grid grid-cols-5 gap-4 mt-4">
           <div className="bg-blue-50 rounded-lg p-4">
             <div className="text-sm text-blue-800 flex items-center gap-1">
-              <AlertCircle className="w-4 h-4" />
+              <Clock className="w-4 h-4" />
+              Pendentes
+            </div>
+            <div className="text-2xl font-bold text-blue-800">{stats.pendente}</div>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4">
+            <div className="text-sm text-purple-800 flex items-center gap-1">
+              <Eye className="w-4 h-4" />
               Em Análise
             </div>
-            <div className="text-2xl font-bold text-blue-800">{stats.em_analise}</div>
+            <div className="text-2xl font-bold text-purple-800">{stats.em_analise}</div>
           </div>
           <div className="bg-green-50 rounded-lg p-4">
             <div className="text-sm text-green-800 flex items-center gap-1">
               <CheckCircle className="w-4 h-4" />
-              Concluído
+              Concluídos
             </div>
             <div className="text-2xl font-bold text-green-800">{stats.concluido}</div>
+          </div>
+          <div className="bg-emerald-50 rounded-lg p-4">
+            <div className="text-sm text-emerald-800 flex items-center gap-1">
+              <ClipboardCheck className="w-4 h-4" />
+              Classificados
+            </div>
+            <div className="text-2xl font-bold text-emerald-800">{stats.classificado}</div>
+          </div>
+          <div className="bg-red-50 rounded-lg p-4">
+            <div className="text-sm text-red-800 flex items-center gap-1">
+              <XCircle className="w-4 h-4" />
+              Desclassificados
+            </div>
+            <div className="text-2xl font-bold text-red-800">{stats.desclassificado}</div>
           </div>
         </div>
       </div>

@@ -313,14 +313,44 @@ export const candidateService = {
       let filteredData = allData;
 
       if (userId) {
-        filteredData = allData.filter(item => item.assigned_to === userId);
+        filteredData = allData.filter(item => {
+          const assignedTo = (item as any).assigned_to || (item as any).Analista;
+          return assignedTo === userId;
+        });
       }
+
+      const getStatus = (candidate: any): string => {
+        return candidate.Status || candidate.status || '';
+      };
 
       const stats = {
         total: filteredData.length,
-        pendente: filteredData.filter(c => c.status === 'pendente').length,
-        em_analise: filteredData.filter(c => c.status === 'em_analise').length,
-        concluido: filteredData.filter(c => c.status === 'concluido').length,
+        pendente: filteredData.filter(c => {
+          const status = getStatus(c);
+          return !status || status === 'pendente' || status === '';
+        }).length,
+        em_analise: filteredData.filter(c => {
+          const status = getStatus(c);
+          return status === 'em_analise' || status === 'Em Análise';
+        }).length,
+        concluido: filteredData.filter(c => {
+          const status = getStatus(c);
+          return status === 'Classificado' || status === 'Desclassificado' ||
+                 status === 'classificado' || status === 'desclassificado' ||
+                 status === 'concluido';
+        }).length,
+        classificado: filteredData.filter(c => {
+          const status = getStatus(c);
+          return status === 'Classificado' || status === 'classificado';
+        }).length,
+        desclassificado: filteredData.filter(c => {
+          const status = getStatus(c);
+          return status === 'Desclassificado' || status === 'desclassificado';
+        }).length,
+        revisar: filteredData.filter(c => {
+          const status = getStatus(c);
+          return status === 'Revisar' || status === 'revisar';
+        }).length,
         administrativa: filteredData.filter(c => c.AREAATUACAO === 'Administrativa').length,
         assistencial: filteredData.filter(c => c.AREAATUACAO === 'Assistencial').length,
         pcd: filteredData.filter(c => c.VAGAPCD === 'Sim').length,
