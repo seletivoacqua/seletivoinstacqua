@@ -183,6 +183,15 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
     }
   };
 
+  // Função para renderizar os cargos - NOVA
+  const renderCargos = () => {
+    const cargos = [];
+    if (candidate.CARGOADMIN) cargos.push(`Admin: ${candidate.CARGOADMIN}`);
+    if (candidate.CARGOASSIS) cargos.push(`Assis: ${candidate.CARGOASSIS}`);
+    
+    return cargos.length > 0 ? cargos.join(' | ') : 'Não informado';
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="p-4 bg-white border-b border-slate-200">
@@ -207,14 +216,13 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
             <p className="text-sm text-slate-800 font-medium">{candidate.AREAATUACAO}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">Cargo Pretendido</p>
-            <p className="text-sm text-slate-800 font-medium">{candidate.CARGOPRETENDIDO}</p>
+            <p className="text-xs text-slate-500 uppercase font-semibold">Cargos</p>
+            <p className="text-sm text-slate-800 font-medium">{renderCargos()}</p>
           </div>
           <div>
             <p className="text-xs text-slate-500 uppercase font-semibold">Vaga PCD</p>
             <p className="text-sm text-slate-800 font-medium">{candidate.VAGAPCD || 'Não'}</p>
           </div>
-        
         </div>
 
         <div className="mb-3">
