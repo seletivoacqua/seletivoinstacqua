@@ -201,16 +201,7 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
             <p className="text-xs text-slate-500 uppercase font-semibold">Vaga PCD</p>
             <p className="text-sm text-slate-800 font-medium">{candidate.VAGAPCD || 'Não'}</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">Status</p>
-            <p className="text-sm text-slate-800 font-medium">
-              {candidate.Status === 'concluido'  // ✅ CORRIGIDO: Status com S maiúsculo
-                ? 'Concluído'
-                : candidate.Status === 'em_analise'
-                ? 'Em Análise'
-                : 'Pendente'}
-            </p>
-          </div>
+        
         </div>
 
         <div className="mb-3">
