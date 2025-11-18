@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck, Search } from 'lucide-react';
 import type { Candidate } from '../types/candidate';
 
 interface ReportsPageProps {
@@ -23,6 +23,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('todos');
   const [reportType, setReportType] = useState<ReportType>('classificados');
   const [reportData, setReportData] = useState<Candidate[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [stats, setStats] = useState({
     classificados: 0,
     desclassificados: 0,
@@ -389,6 +390,24 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     return reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados';
   }
 
+  const filteredReportData = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return reportData;
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+
+    return reportData.filter(candidate => {
+      const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
+      const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
+      const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
+
+      return nomeCompleto.includes(searchLower) ||
+             nomeSocial.includes(searchLower) ||
+             cpf.includes(searchLower);
+    });
+  }, [reportData, searchTerm]);
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <div className="bg-white border-b px-6 py-4">
@@ -518,6 +537,20 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               </div>
             )}
 
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Buscar Candidato</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Nome ou CPF..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                />
+              </div>
+            </div>
+
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={exportToPDF}
@@ -563,7 +596,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
             <div className="px-6 py-4 border-b">
               <h3 className="text-lg font-semibold text-gray-800">{getReportTitle()}</h3>
               <p className="text-sm text-gray-600 mt-1">
-                {reportData.length} {reportData.length === 1 ? 'registro encontrado' : 'registros encontrados'}
+                {filteredReportData.length} {filteredReportData.length === 1 ? 'registro encontrado' : 'registros encontrados'}
+                {searchTerm && ` (filtrados de ${reportData.length} total)`}
                 {selectedAnalyst !== 'todos' && ` - Analista: ${analysts.find(a => a.id === selectedAnalyst)?.name}`}
                 {selectedInterviewer !== 'todos' && ` - Entrevistador: ${interviewers.find(i => i.id === selectedInterviewer)?.name}`}
               </p>
@@ -614,7 +648,15 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {reportData.map((candidate, index) => (
+                  {filteredReportData.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                        <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        Nenhum candidato encontrado com "{searchTerm}"
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReportData.map((candidate, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-800 font-medium">
                         {getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado'}
@@ -669,7 +711,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                         </td>
                       )}
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
