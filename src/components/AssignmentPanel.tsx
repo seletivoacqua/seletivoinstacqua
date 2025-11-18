@@ -21,7 +21,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    console.log('🔄 AssignmentPanel - Iniciando carregamento');
+    console.log('AssignmentPanel - Iniciando carregamento');
     loadAnalysts();
     loadUnassignedCandidates();
   }, [page]);
@@ -31,24 +31,18 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       setLoadingAnalysts(true);
       setError('');
       console.log('========================================');
-      console.log('📋 [AssignmentPanel] Iniciando carregamento de analistas...');
+      console.log('[AssignmentPanel] Iniciando carregamento de analistas...');
       console.log('========================================');
-
       const data = await getAnalysts();
-
       console.log('========================================');
       console.log('✅ [AssignmentPanel] Analistas recebidos:', data);
-      console.log('📊 [AssignmentPanel] Total de analistas:', data.length);
-      console.log('📊 [AssignmentPanel] Tipo de data:', typeof data);
-      console.log('📊 [AssignmentPanel] É array?', Array.isArray(data));
-
+      console.log('Total de analistas:', data.length);
+      console.log('É array?', Array.isArray(data));
       if (data.length > 0) {
-        console.log('👤 [AssignmentPanel] Primeiro analista:', data[0]);
+        console.log('Primeiro analista:', data[0]);
       }
       console.log('========================================');
-
       setAnalysts(data);
-
       if (data.length === 0) {
         const msg = 'Nenhum analista encontrado. Verifique se há analistas cadastrados no sistema.';
         console.warn('⚠️ [AssignmentPanel]', msg);
@@ -56,9 +50,8 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       }
     } catch (error) {
       console.error('========================================');
-      console.error('❌ [AssignmentPanel] Erro ao carregar analistas:', error);
-      console.error('❌ [AssignmentPanel] Tipo do erro:', typeof error);
-      console.error('❌ [AssignmentPanel] Mensagem:', error instanceof Error ? error.message : String(error));
+      console.error('Erro ao carregar analistas:', error);
+      console.error('Mensagem:', error instanceof Error ? error.message : String(error));
       console.error('========================================');
       setError('Erro ao carregar lista de analistas. Tente novamente.');
       setAnalysts([]);
@@ -81,25 +74,17 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     }
   }
 
+  // Função única e limpa para toggle
   function toggleCandidate(id: string) {
-    const newSelection = new Set(selectedCandidates);
-    if (newSelection.has(id)) {
-      newSelection.delete(id);
-    } else {
-      newSelection.add(id);
-    }
-    setSelectedCandidates(newSelection);
-  }
-
-  // ✅ CORREÇÃO: Função para lidar apenas com o clique no checkbox
-  function handleCheckboxClick(e: React.MouseEvent, id: string) {
-    e.stopPropagation(); // Impede que o evento chegue no container
-    toggleCandidate(id);
-  }
-
-  // ✅ CORREÇÃO: Função para lidar com o clique no container (linha)
-  function handleRowClick(id: string) {
-    toggleCandidate(id);
+    setSelectedCandidates(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   }
 
   async function handleAssign() {
@@ -107,7 +92,6 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       alert('Selecione um analista e pelo menos um candidato');
       return;
     }
-
     try {
       setLoading(true);
       await assignCandidates({
@@ -115,7 +99,6 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
         analystId: selectedAnalyst,
         adminId,
       });
-
       setSelectedCandidates(new Set());
       setSelectedAnalyst('');
       await loadUnassignedCandidates();
@@ -159,17 +142,13 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       </div>
 
       <div className="flex-1 overflow-auto p-6">
-        {/* Mensagem de erro */}
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <div className="flex-1">
               <p className="text-red-800 font-medium">{error}</p>
             </div>
-            <button
-              onClick={() => setError('')}
-              className="text-red-500 hover:text-red-700"
-            >
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
               ×
             </button>
           </div>
@@ -182,7 +161,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 Candidatos Não Alocados ({unassignedCandidates.length})
               </h3>
               <div className="text-sm text-gray-500">
-                Clique nos candidatos para selecionar
+                Marque os checkboxes para selecionar
               </div>
             </div>
 
@@ -199,37 +178,34 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                 {unassignedCandidates.map(candidate => (
                   <div
                     key={candidate.id}
-                    onClick={() => handleRowClick(candidate.id)}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`p-4 rounded-lg border-2 transition-all ${
                       selectedCandidates.has(candidate.id)
                         ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      {/* ✅ CORREÇÃO: Checkbox com stopPropagation */}
-                      <div 
-                        onClick={(e) => handleCheckboxClick(e, candidate.id)}
-                        className="flex items-center"
-                      >
+                      {/* Checkbox controlando tudo diretamente via onChange */}
+                      <label className="flex items-center cursor-pointer select-none mt-0.5">
                         <input
                           type="checkbox"
                           checked={selectedCandidates.has(candidate.id)}
-                          onChange={() => {}} // Empty handler - we handle via click
-                          className="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          onChange={() => toggleCandidate(candidate.id)}
+                          className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
                         />
-                      </div>
+                      </label>
+
                       <div className="flex-1">
                         <div className="font-semibold text-gray-800">
                           {candidate.NOMECOMPLETO || candidate.name}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          CPF: {candidate.CPF || candidate.registration_number} • 
+                          CPF: {candidate.CPF || candidate.registration_number} •
                           Área: {candidate.AREAATUACAO || 'Não informada'}
                         </div>
                         {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
                           <div className="text-xs text-gray-500 mt-1">
-                            Cargos: 
+                            Cargos:
                             {candidate.CARGOADMIN && ` Admin: ${candidate.CARGOADMIN}`}
                             {candidate.CARGOADMIN && candidate.CARGOASSIS && ' | '}
                             {candidate.CARGOASSIS && ` Assis: ${candidate.CARGOASSIS}`}
@@ -265,16 +241,15 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
             )}
           </div>
 
+          {/* Painel lateral - mantido 100% igual */}
           <div className="space-y-4">
             <div className="bg-white border rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Alocar para Analista</h3>
-
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Selecione o Analista
                   </label>
-                  
                   {loadingAnalysts ? (
                     <div className="flex items-center justify-center py-4">
                       <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
@@ -287,7 +262,9 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                       className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       disabled={analysts.length === 0}
                     >
-                      <option value="">{analysts.length === 0 ? 'Nenhum analista disponível' : 'Escolha um analista...'}</option>
+                      <option value="">
+                        {analysts.length === 0 ? 'Nenhum analista disponível' : 'Escolha um analista...'}
+                      </option>
                       {analysts.map(analyst => (
                         <option key={analyst.id} value={analyst.id}>
                           {analyst.name} ({analyst.role})
@@ -303,7 +280,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                   </div>
                   {selectedCandidates.size > 0 && (
                     <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                      ✅ {selectedCandidates.size} candidato(s) pronto(s) para alocação
+                      {selectedCandidates.size} candidato(s) pronto(s) para alocação
                     </div>
                   )}
                 </div>
@@ -337,8 +314,8 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               ) : (
                 <div className="space-y-2">
                   {analysts.map(analyst => (
-                    <div 
-                      key={analyst.id} 
+                    <div
+                      key={analyst.id}
                       className={`flex justify-between items-center text-sm p-2 rounded ${
                         selectedAnalyst === analyst.id ? 'bg-blue-100 border border-blue-200' : ''
                       }`}
