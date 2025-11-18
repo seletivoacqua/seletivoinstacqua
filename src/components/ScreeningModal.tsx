@@ -64,6 +64,70 @@ export default function ScreeningModal({
   const [classification, setClassification] = useState<'classificado' | 'desclassificado' | null>(null);
   const [notes, setNotes] = useState('');
 
+  // Função para enviar a triagem
+  const submitScreening = async () => {
+    setLoading(true);
+    
+    try {
+      // Preparar os dados para envio
+      const screeningData = {
+        candidate_id: candidate.id,
+        status: classification === 'classificado' ? 'Classificado' : 'Desclassificado',
+        documents: documents.reduce((acc, doc) => {
+          acc[doc.key] = doc.value;
+          return acc;
+        }, {} as Record<string, string>),
+        technical_evaluation: classification === 'classificado' ? technicalEvaluation : null,
+        notes: formatNotes(),
+        disqualification_reason: classification === 'desclassificado' ? getDisqualificationReason() : null,
+        total_score: classification === 'classificado' 
+          ? technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia 
+          : 0,
+        evaluated_by: user?.id || 'unknown',
+        evaluated_at: new Date().toISOString()
+      };
+
+      console.log('🎯 ENVIANDO TRIAGEM:', screeningData);
+
+      // Aqui você faria a chamada real para sua API
+      // Exemplo:
+      // const response = await fetch('/api/screening', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(screeningData)
+      // });
+
+      // if (!response.ok) {
+      //   throw new Error('Erro ao salvar triagem');
+      // }
+
+      // Simulando uma requisição bem-sucedida
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log('✅ Triagem salva com sucesso!');
+      
+      // Chamar callback de sucesso
+      onScreeningComplete();
+      handleClose();
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar triagem:', error);
+      alert('Erro ao salvar triagem. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para atualizar avaliação técnica
+  const updateTechnicalEvaluation = (field: keyof TechnicalEvaluation, value: number) => {
+    setTechnicalEvaluation(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   // Funções auxiliares
   const getDisqualificationReason = (): string => {
     const problematicDocs = documents.filter(doc => doc.value === 'nao_conforme');
@@ -139,25 +203,30 @@ export default function ScreeningModal({
   };
 
   // Função para desclassificar candidato
-const handleDisqualify = async () => {
-  if (!allRequiredDocumentsEvaluated()) {
-    alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
-    return;
-  }
+  const handleDisqualify = async () => {
+    if (!allRequiredDocumentsEvaluated()) {
+      alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
+      return;
+    }
 
-  // ✅ PRIMEIRO seta a classificação, DEPOIS loga
-  setClassification('desclassificado');
-  
-  console.log('🎯 DESCLASSIFICANDO - Dados que serão enviados:', {
-    status: 'Desclassificado',
-    classification: classification, // ❌ AINDA VAI SER null AQUI!
-    // Para ver o valor correto, use:
-    currentClassification: 'desclassificado', // ✅
-    documents: documents.map(d => ({ name: d.name, value: d.value }))
-  });
+    // ✅ Usar o valor diretamente em vez de depender do estado atual
+    const currentClassification = 'desclassificado';
+    
+    console.log('🎯 DESCLASSIFICANDO - Dados que serão enviados:', {
+      status: 'Desclassificado',
+      classification: currentClassification,
+      documents: documents.map(d => ({ name: d.name, value: d.value })),
+      reason: getDisqualificationReason()
+    });
 
-  await submitScreening();
-};
+    // ✅ Primeiro atualiza o estado, depois chama a função
+    setClassification(currentClassification);
+    
+    // Pequeno delay para garantir que o estado foi atualizado
+    setTimeout(() => {
+      submitScreening();
+    }, 100);
+  };
 
   // Função para fechar modal
   const handleClose = () => {
@@ -441,7 +510,7 @@ const handleDisqualify = async () => {
           Voltar
         </button>
         <button
-          onClick={submitScreening}
+          onClick={() => submitScreening()}
           disabled={loading || technicalEvaluation.capacidade_tecnica === 0 || technicalEvaluation.experiencia === 0}
           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
