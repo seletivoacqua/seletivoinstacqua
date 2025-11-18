@@ -69,9 +69,13 @@ export default function ScreeningModal({
     setLoading(true);
 
     try {
-      console.log('🚀 Iniciando submitScreening...');
-      console.log('📊 Status:', classificationStatus);
-      console.log('👤 Candidato:', candidate.id);
+      console.log('═══════════════════════════════════════');
+      console.log('🚀 INICIANDO TRIAGEM');
+      console.log('═══════════════════════════════════════');
+      console.log('📊 Status enviado:', classificationStatus);
+      console.log('👤 Candidato ID:', candidate.id);
+      console.log('📝 Registro:', candidate.registration_number);
+      console.log('🆔 CPF:', candidate.CPF);
 
       // ✅ Preparar dados dos documentos
       const documentsData = documents.reduce((acc, doc) => {
@@ -79,7 +83,10 @@ export default function ScreeningModal({
         return acc;
       }, {} as Record<string, string>);
 
-      console.log('📋 Documentos:', documentsData);
+      console.log('📋 Documentos avaliados:');
+      Object.entries(documentsData).forEach(([key, value]) => {
+        console.log(`   - ${key}: ${value}`);
+      });
 
       // ✅ Preparar dados de triagem
       const screeningData: any = {
@@ -93,37 +100,50 @@ export default function ScreeningModal({
         ...documentsData
       };
 
-      // ✅ Motivo de desclassificação (simplificado)
-      if (classificationStatus === 'desclassificado' && disqualificationReason) {
-        screeningData.disqualification_reason = disqualificationReason;
+      // ✅ Motivo de desclassificação
+      if (classificationStatus === 'desclassificado') {
+        screeningData.disqualification_reason = disqualificationReason || '';
+        console.log('❌ Motivo desclassificação:', screeningData.disqualification_reason);
       }
 
       // ✅ Avaliação técnica
       if (classificationStatus === 'classificado') {
         screeningData.capacidade_tecnica = technicalEvaluation.capacidade_tecnica;
         screeningData.experiencia = technicalEvaluation.experiencia;
+        console.log('✅ Avaliação técnica:', {
+          capacidade: screeningData.capacidade_tecnica,
+          experiencia: screeningData.experiencia
+        });
       }
 
-      console.log('📤 Enviando dados:', JSON.stringify(screeningData, null, 2));
+      console.log('═══════════════════════════════════════');
+      console.log('📤 DADOS COMPLETOS A ENVIAR:');
+      console.log(JSON.stringify(screeningData, null, 2));
+      console.log('═══════════════════════════════════════');
 
       // ✅ Usar serviço HTTP do Google Sheets
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.saveScreening(screeningData);
 
-      console.log('📥 Resposta recebida:', result);
+      console.log('═══════════════════════════════════════');
+      console.log('📥 RESPOSTA DO SERVIDOR:');
+      console.log(JSON.stringify(result, null, 2));
+      console.log('═══════════════════════════════════════');
 
       if (result.success) {
-        console.log('✅ Triagem salva com sucesso!');
-        alert(`Triagem salva com sucesso! Status: ${result.status || classificationStatus}`);
+        console.log('✅ SUCESSO! Status retornado:', result.status);
+        alert(`Triagem salva com sucesso!\nStatus: ${result.status || classificationStatus}`);
         onScreeningComplete();
         handleClose();
       } else {
-        console.error('❌ Erro:', result.error);
+        console.error('❌ ERRO DO SERVIDOR:', result.error);
         alert(`Erro ao salvar: ${result.error || 'Erro desconhecido'}`);
       }
 
     } catch (error) {
-      console.error('❌ Erro ao processar triagem:', error);
+      console.error('═══════════════════════════════════════');
+      console.error('❌ ERRO CRÍTICO:', error);
+      console.error('═══════════════════════════════════════');
       alert(`Erro ao salvar triagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
