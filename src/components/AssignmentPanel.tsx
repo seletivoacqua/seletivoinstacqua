@@ -31,9 +31,6 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       setError('');
       const data = await getAnalysts();
       setAnalysts(data);
-      if (data.length === 0) {
-        setError('Nenhum analista encontrado.');
-      }
     } catch (error) {
       setError('Erro ao carregar analistas.');
       setAnalysts([]);
@@ -81,7 +78,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
     try {
       setLoading(true);
       await assignCandidates({
-        candidateIds: Array.from(selectedCandidates), // ← Agora são IDs válidos
+        candidateIds: Array.from(selectedCandidates),
         analystId: selectedAnalyst,
         adminId,
       });
@@ -90,23 +87,16 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
       setSelectedAnalyst('');
       await loadUnassignedCandidates();
       onAssignmentComplete();
-      alert('Candidatos alocados com sucesso!');
+      alert(`${selectedCandidates.size} candidato(s) alocado(s) com sucesso!`);
     } catch (error) {
-      console.error('Erro ao alocar:', error);
       alert('Erro ao alocar candidatos');
     } finally {
       setLoading(false);
     }
   }
 
-  const analystWorkload = analysts.reduce((acc, analyst) => {
-    acc[analyst.id] = unassignedCandidates.filter(c => c.assigned_to === analyst.id).length;
-    return acc;
-  }, {} as Record<string, number>);
-
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Cabeçalho igual */}
       <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="flex items-center justify-between">
           <div>
@@ -120,7 +110,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
           </div>
           <button onClick={loadAnalysts} disabled={loadingAnalysts} className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${loadingAnalysts ? 'animate-spin' : ''}`} />
-            Recarregar
+            Recarregar Analistas
           </button>
         </div>
       </div>
@@ -130,7 +120,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <p className="text-red-800 font-medium">{error}</p>
-            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+            <button onClick={() => setError('')} className="ml-auto text-red-500 hover:text-red-700">×</button>
           </div>
         )}
 
@@ -169,11 +159,11 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                       <input
                         type="checkbox"
                         checked={selectedCandidates.has(candidate.id)}
-                        onChange={(e) => {
-                          e.stopPropagation(); // ← Impede duplo toggle
+                        onChange={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
                           toggleCandidate(candidate.id);
                         }}
-                        onClick={(e) => e.stopPropagation()} // ← Garante que clique no checkbox não dispare o container
                         className="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                       />
                       <div className="flex-1">
@@ -183,6 +173,15 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                         <div className="text-sm text-gray-600 mt-1">
                           CPF: {candidate.registration_number || '—'} • Área: {candidate.AREAATUACAO || 'Não informada'}
                         </div>
+                        {/* CARGOS DE VOLTA E FUNCIONANDO */}
+                        {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Cargos:
+                            {candidate.CARGOADMIN && ` Admin: ${candidate.CARGOADMIN}`}
+                            {candidate.CARGOADMIN && candidate.CARGOASSIS && ' | '}
+                            {candidate.CARGOASSIS && ` Assis: ${candidate.CARGOASSIS}`}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -190,13 +189,12 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
               </div>
             )}
 
-            {/* Paginação igual */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-4">
+              <div className="flex justify-center gap-4 mt-6">
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-4 py-2 border rounded disabled:opacity-50">
                   Anterior
                 </button>
-                <span className="text-sm text-gray-600">Página {page} de {totalPages}</span>
+                <span className="text-sm text-gray-600 self-center">Página {page} de {totalPages}</span>
                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-4 py-2 border rounded disabled:opacity-50">
                   Próxima
                 </button>
@@ -204,16 +202,15 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
             )}
           </div>
 
-          {/* Painel lateral igual ao que já funciona */}
+          {/* Painel lateral - idêntico ao que já funcionava */}
           <div className="space-y-4">
-            {/* ... resto igual ao seu código que já funciona ... */}
             <div className="bg-white border rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Alocar para Analista</h3>
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Selecione o Analista</label>
                   {loadingAnalysts ? (
-                    <div className="flex items-center justify-center py-4 gap-2">
+                    <div className="flex items-center gap-2 py-4 justify-center">
                       <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                       <span className="text-sm text-gray-600">Carregando...</span>
                     </div>
@@ -224,7 +221,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                       className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       disabled={analysts.length === 0}
                     >
-                      <option value="">{analysts.length === 0 ? 'Nenhum analista' : 'Escolha um analista...'}</option>
+                      <option value="">{analysts.length === 0 ? 'Nenhum analista disponível' : 'Escolha um analista...'}</option>
                       {analysts.map(analyst => (
                         <option key={analyst.id} value={analyst.id}>
                           {analyst.name} ({analyst.role})
@@ -243,7 +240,11 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                   disabled={!selectedAnalyst || selectedCandidates.size === 0 || loading}
                   className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
                 >
-                  {loading ? <>Alocando...</> : <>Alocar Candidatos <ChevronRight className="w-5 h-5" /></>}
+                  {loading ? (
+                    <>Alocando...</>
+                  ) : (
+                    <>Alocar {selectedCandidates.size} Candidato(s) <ChevronRight className="w-5 h-5" /></>
+                  )}
                 </button>
               </div>
             </div>
