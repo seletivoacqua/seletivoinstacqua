@@ -43,7 +43,7 @@ export default function ScreeningModal({
     { name: 'CNH', value: 'nao_se_aplica' },
     { name: 'Comprovação de Experiência Profissional', value: 'nao_se_aplica' },
     { name: 'Regularidade Profissional', value: 'nao_se_aplica' },
-    { name: 'Laudo médico (PCD) (EM CASO DE PCD)', value: 'nao_se_aplica' },
+    { name: 'Laudo médico (PCD)', value: 'nao_se_aplica' },
     { name: 'Currículo atualizado', value: 'nao_se_aplica' }
   ]);
 
@@ -91,49 +91,65 @@ export default function ScreeningModal({
   };
 
   // Função para enviar a triagem
-  const submitScreening = async () => {
-    try {
-      setLoading(true);
-      const { googleSheetsService } = await import('../services/googleSheets');
+// 🎯 ENVIAR TRIAGEM - USE ESTA VERSÃO (DA ANTIGA)
+const submitScreening = async () => {
+  try {
+    setLoading(true);
+    const { googleSheetsService } = await import('../services/googleSheets');
 
-      // Preparar dados da triagem
-      const screeningData = {
-        candidateId: candidate.id,
-        registrationNumber: candidate.registration_number,
-        CPF: candidate.CPF,
-        status: classification,
-        documents: documents.reduce((acc, doc, index) => {
-          acc[`documento_${index + 1}`] = doc.value;
-          return acc;
-        }, {} as Record<string, string>),
-        capacidade_tecnica: technicalEvaluation.capacidade_tecnica,
-        experiencia: technicalEvaluation.experiencia,
-        total_score: technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia,
-        notes,
-        analystEmail: user?.email,
-        screenedAt: new Date().toISOString()
-      };
-
-      console.log('📊 Enviando dados da triagem:', screeningData);
-
-      // Aqui você precisará criar uma função no seu googleSheetsService para salvar a triagem
-      const result = await googleSheetsService.saveScreening(screeningData);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao salvar triagem');
-      }
-
-      console.log('✅ Triagem salva com sucesso');
-      onScreeningComplete();
-      handleClose();
-
-    } catch (error) {
-      console.error('❌ Erro ao salvar triagem:', error);
-      alert(`Erro ao salvar triagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setLoading(false);
+    // ✅ Validação: pelo menos um identificador deve existir
+    if (!candidate.registration_number && !candidate.CPF && !candidate.id) {
+      throw new Error('Nenhum identificador válido encontrado para o candidato (CPF, número de inscrição ou ID)');
     }
-  };
+
+    const statusForScript = classification === 'classificado' ? 'Classificado' : 'Desclassificado';
+
+    // ✅ Priorize o registrationNumber, depois CPF, depois candidateId
+    const screeningData = {
+      candidateId: candidate.id,
+      registrationNumber: candidate.registration_number,
+      cpf: candidate.CPF,
+      status: statusForScript,
+      
+      'checkrg-cpf': documents.find(d => d.key === 'checkrg-cpf')?.value,
+      'check-cnh': documents.find(d => d.key === 'check-cnh')?.value,
+      'check-experiencia': documents.find(d => d.key === 'check-experiencia')?.value,
+      'check-regularidade': documents.find(d => d.key === 'check-regularidade')?.value,
+      'check-laudo': documents.find(d => d.key === 'check-laudo')?.value,
+      'check-curriculo': documents.find(d => d.key === 'check-curriculo')?.value,
+      
+      ...(classification === 'desclassificado' && {
+        disqualification_reason: disqualificationReason || getDisqualificationReason(),
+        documentos_nao_conformes: documents
+          .filter(doc => doc.value === 'nao_conforme')
+          .map(doc => doc.name)
+          .join(', ')
+      }),
+      
+      notes: formatNotes(),
+      analystEmail: user?.email,
+      screenedAt: new Date().toISOString()
+    };
+
+    console.log('📊 Dados da triagem:', screeningData);
+
+    const result = await googleSheetsService.saveScreening(screeningData);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Erro ao salvar triagem');
+    }
+
+    console.log('✅ Triagem salva com sucesso');
+    onScreeningComplete();
+    handleClose();
+
+  } catch (error) {
+    console.error('❌ Erro ao salvar triagem:', error);
+    alert(`Erro ao salvar triagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Função para fechar modal - ATUALIZADA com nova lista de documentos
   const handleClose = () => {
