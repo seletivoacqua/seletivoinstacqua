@@ -139,16 +139,42 @@ export default function ScreeningModal({
   };
 
   // Função para desclassificar candidato
-  const handleDisqualify = async () => {
-    if (!allRequiredDocumentsEvaluated()) {
-      alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
-      return;
-    }
+ const handleDisqualify = async () => {
+  if (!allRequiredDocumentsEvaluated()) {
+    alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
+    return;
+  }
 
-    setClassification('desclassificado');
-    await submitScreening();
-  };
+  // Se houver documentos não conformes, usa como motivo automático
+  if (hasNonConformDocuments()) {
+    const autoReason = `Documentos obrigatórios não conformes: ${getProblematicDocuments().map(d => d.name).join(', ')}`;
+    setDisqualificationReason(prev => prev || autoReason);
+  }
 
+  // Se não há motivo e não há documentos problemáticos, exige motivo manual
+  if (!disqualificationReason.trim() && !hasNonConformDocuments()) {
+    alert('Informe o motivo da desclassificação.');
+    return;
+  }
+
+  console.log('🚫 INICIANDO DESCLASSIFICAÇÃO...');
+  console.log('   - Motivo:', disqualificationReason);
+  console.log('   - Documentos não conformes:', hasNonConformDocuments());
+  
+  // ✅ SETA A CLASSIFICAÇÃO ANTES DE ENVIAR
+  setClassification('desclassificado');
+  
+  // ✅ PEQUENA PAUSA PARA O ESTADO ATUALIZAR (opcional)
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  console.log('🎯 Dados finais antes do envio:', {
+    classification: classification, // ✅ Agora deve mostrar 'desclassificado'
+    status: 'Desclassificado'
+  });
+
+  await submitScreening();
+};
+   
   // Função para atualizar avaliação técnica
   const updateTechnicalEvaluation = (field: keyof TechnicalEvaluation, value: number) => {
     setTechnicalEvaluation(prev => ({
