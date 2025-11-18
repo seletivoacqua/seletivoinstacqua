@@ -139,111 +139,25 @@ export default function ScreeningModal({
   };
 
   // Função para desclassificar candidato
- const handleDisqualify = async () => {
+const handleDisqualify = async () => {
   if (!allRequiredDocumentsEvaluated()) {
     alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
     return;
   }
 
-  // Se houver documentos não conformes, usa como motivo automático
-  if (hasNonConformDocuments()) {
-    const autoReason = `Documentos obrigatórios não conformes: ${getProblematicDocuments().map(d => d.name).join(', ')}`;
-    setDisqualificationReason(prev => prev || autoReason);
-  }
-
-  // Se não há motivo e não há documentos problemáticos, exige motivo manual
-  if (!disqualificationReason.trim() && !hasNonConformDocuments()) {
-    alert('Informe o motivo da desclassificação.');
-    return;
-  }
-
-  console.log('🚫 INICIANDO DESCLASSIFICAÇÃO...');
-  console.log('   - Motivo:', disqualificationReason);
-  console.log('   - Documentos não conformes:', hasNonConformDocuments());
-  
-  // ✅ SETA A CLASSIFICAÇÃO ANTES DE ENVIAR
+  // ✅ PRIMEIRO seta a classificação, DEPOIS loga
   setClassification('desclassificado');
   
-  // ✅ PEQUENA PAUSA PARA O ESTADO ATUALIZAR (opcional)
-  await new Promise(resolve => setTimeout(resolve, 50));
-  
-  console.log('🎯 Dados finais antes do envio:', {
-    classification: classification, // ✅ Agora deve mostrar 'desclassificado'
-    status: 'Desclassificado'
+  console.log('🎯 DESCLASSIFICANDO - Dados que serão enviados:', {
+    status: 'Desclassificado',
+    classification: classification, // ❌ AINDA VAI SER null AQUI!
+    // Para ver o valor correto, use:
+    currentClassification: 'desclassificado', // ✅
+    documents: documents.map(d => ({ name: d.name, value: d.value }))
   });
 
   await submitScreening();
 };
-   
-  // Função para atualizar avaliação técnica
-  const updateTechnicalEvaluation = (field: keyof TechnicalEvaluation, value: number) => {
-    setTechnicalEvaluation(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Função para enviar a triagem
-  const submitScreening = async () => {
-    try {
-      setLoading(true);
-      const { googleSheetsService } = await import('../services/googleSheets');
-
-      // Validação: pelo menos um identificador deve existir
-      if (!candidate.registration_number && !candidate.CPF && !candidate.id) {
-        throw new Error('Nenhum identificador válido encontrado para o candidato (CPF, número de inscrição ou ID)');
-      }
-
-      const statusForScript = classification === 'classificado' ? 'Classificado' : 'Desclassificado';
-
-      // Preparar dados para o serviço
-      const screeningData = {
-        candidateId: candidate.id,
-        registrationNumber: candidate.registration_number,
-        cpf: candidate.CPF,
-        status: statusForScript,
-        
-        // Documentos
-        'checkrg-cpf': documents.find(d => d.key === 'checkrg-cpf')?.value,
-        'check-cnh': documents.find(d => d.key === 'check-cnh')?.value,
-        'check-experiencia': documents.find(d => d.key === 'check-experiencia')?.value,
-        'check-regularidade': documents.find(d => d.key === 'check-regularidade')?.value,
-        'check-laudo': documents.find(d => d.key === 'check-laudo')?.value,
-        'check-curriculo': documents.find(d => d.key === 'check-curriculo')?.value,
-        
-        // Motivos para desclassificação
-        ...(classification === 'desclassificado' && {
-          disqualification_reason: getDisqualificationReason(),
-          documentos_nao_conformes: documents
-            .filter(doc => doc.value === 'nao_conforme')
-            .map(doc => doc.name)
-            .join(', ')
-        }),
-        
-        notes: formatNotes(),
-        analystEmail: user?.email,
-        screenedAt: new Date().toISOString()
-      };
-
-      console.log('📊 Dados da triagem:', screeningData);
-
-      const result = await googleSheetsService.saveScreening(screeningData);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao salvar triagem');
-      }
-
-      console.log('✅ Triagem salva com sucesso');
-      onScreeningComplete();
-      handleClose();
-
-    } catch (error) {
-      console.error('❌ Erro ao salvar triagem:', error);
-      alert(`Erro ao salvar triagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Função para fechar modal
   const handleClose = () => {
