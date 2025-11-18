@@ -139,7 +139,11 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
   };
 
   const getCandidateName = () => {
-    return candidate.NOMECOMPLETO || 'Candidato';
+    return candidate.NOMECOMPLETO || candidate.nome_completo || candidate.full_name || 'Candidato';
+  };
+
+  const getSocialName = () => {
+    return candidate.NOMESOCIAL || candidate.nome_social || null;
   };
 
   const getCandidateIdentifier = () => {
@@ -152,6 +156,11 @@ export default function CandidateDetailView({ candidate, onClose }: CandidateDet
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white">{getCandidateName()}</h2>
+            {getSocialName() && (
+              <p className="text-blue-100 text-sm mt-1">
+                Nome Social: {getSocialName()}
+              </p>
+            )}
             <p className="text-blue-100 text-sm mt-1">
               {getCandidateIdentifier()}
             </p>
