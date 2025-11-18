@@ -143,6 +143,15 @@ export default function ClassifiedCandidatesList() {
     }
   }
 
+  // Função para renderizar os cargos - NOVA
+  const renderCargos = (candidate: Candidate) => {
+    const cargos = [];
+    if (candidate.CARGOADMIN) cargos.push(`Admin: ${candidate.CARGOADMIN}`);
+    if (candidate.CARGOASSIS) cargos.push(`Assis: ${candidate.CARGOASSIS}`);
+    
+    return cargos.length > 0 ? cargos.join(' | ') : 'Não informado';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -230,7 +239,7 @@ export default function ClassifiedCandidatesList() {
                 Área
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                Cargo Pretendido
+                Cargos
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 CPF
@@ -276,7 +285,7 @@ export default function ClassifiedCandidatesList() {
                     {candidate.AREAATUACAO || 'Não informado'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {candidate.CARGOPRETENDIDO || 'Não informado'}
+                    {renderCargos(candidate)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 font-mono">
                     {candidate.CPF || 'Não informado'}
