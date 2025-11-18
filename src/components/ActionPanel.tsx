@@ -49,11 +49,11 @@ export default function ActionPanel({
       icon: User,
       columns: ['NOMECOMPLETO', 'NOMESOCIAL', 'CPF', 'VAGAPCD', 'LAUDOMEDICO']
     },
-    { 
-      id: 'area-cargo', 
-      label: 'Área e Cargo', 
+    {
+      id: 'area-cargo',
+      label: 'Área e Cargo',
       icon: Briefcase,
-      columns: ['AREAATUACAO', 'CARGOPRETENDIDO']
+      columns: ['AREAATUACAO', 'CARGOADMIN', 'CARGOASSIS']
     },
     { 
       id: 'curriculo', 

@@ -28,7 +28,8 @@ export default function PaginatedDashboard({ sessionId, analystEmail, onLogout }
     AREAATUACAO: '',
     search: '',
     assignedTo: '',
-    CARGOPRETENDIDO: '',
+    CARGOADMIN: '',
+    CARGOASSIS: '',
     VAGAPCD: ''
   });
   const [loading, setLoading] = useState(false);
@@ -133,7 +134,8 @@ export default function PaginatedDashboard({ sessionId, analystEmail, onLogout }
     CPF: c.CPF,
     VAGAPCD: c.VAGAPCD,
     AREAATUACAO: c.AREAATUACAO,
-    CARGOPRETENDIDO: c.CARGOPRETENDIDO
+    CARGOADMIN: c.CARGOADMIN,
+    CARGOASSIS: c.CARGOASSIS
   });
 
   return (
@@ -284,7 +286,7 @@ export default function PaginatedDashboard({ sessionId, analystEmail, onLogout }
                       {candidate.NOMECOMPLETO}
                     </div>
                     <div className="text-xs text-slate-600 space-y-0.5">
-                      <div>{candidate.AREAATUACAO} • {candidate.CARGOPRETENDIDO}</div>
+                      <div>{candidate.AREAATUACAO} • {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}</div>
                       <div className="text-slate-500">#{candidate.registration_number}</div>
                       {candidate.VAGAPCD === 'Sim' && (
                         <div className="inline-block px-1.5 py-0.5 bg-amber-100 text-amber-800 text-xs rounded">

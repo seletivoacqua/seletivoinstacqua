@@ -17,7 +17,8 @@ export interface Candidate {
   Area?: string;
   desired_area?: string;
   area_atuacao_pretendida?: string;
-  CARGOPRETENDIDO?: string;
+  CARGOADMIN?: string;
+  CARGOASSIS?: string;
   cargo?: string;
   Cargo?: string;
   cargo_administrativo?: string | boolean;

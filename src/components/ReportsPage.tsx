@@ -192,13 +192,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     switch (reportType) {
       case 'classificados':
       case 'entrevista_classificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'PCD', 'Analista', 'Entrevistador'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'PCD', 'Analista', 'Entrevistador'];
         rows = reportData.map(c => [
           getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
           getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
           getCandidateField(c, 'CPF', 'cpf'),
           getCandidateField(c, 'TELEFONE', 'telefone'),
-          getCandidateField(c, 'CARGOPRETENDIDO', 'cargo'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
           getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
@@ -206,13 +206,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         break;
 
       case 'desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Motivo Desclassificação', 'PCD', 'Analista'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Motivo Desclassificação', 'PCD', 'Analista'];
         rows = reportData.map(c => [
           getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
           getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
           getCandidateField(c, 'CPF', 'cpf'),
           getCandidateField(c, 'TELEFONE', 'telefone'),
-          getCandidateField(c, 'CARGOPRETENDIDO', 'cargo'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
           getCandidateField(c, 'Motivo Desclassificação', 'motivo_desclassificacao'),
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
@@ -220,13 +220,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         break;
 
       case 'entrevista_desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Pontuação', 'PCD', 'Entrevistador'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Pontuação', 'PCD', 'Entrevistador'];
         rows = reportData.map(c => [
           getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
           getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
           getCandidateField(c, 'CPF', 'cpf'),
           getCandidateField(c, 'TELEFONE', 'telefone'),
-          getCandidateField(c, 'CARGOPRETENDIDO', 'cargo'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
           c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
@@ -347,7 +347,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-',
       getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado',
       getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado',
-      getCandidateField(candidate, 'CARGOPRETENDIDO', 'cargo') || 'Não informado'
+      [getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'
     ];
 
     switch (reportType) {
@@ -679,7 +679,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                         {getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {getCandidateField(candidate, 'CARGOPRETENDIDO', 'cargo') || 'Não informado'}
+                        {[getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'}
                       </td>
                       {reportType === 'desclassificados' && (
                         <td className="px-4 py-3 text-sm text-gray-600">

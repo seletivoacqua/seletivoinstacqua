@@ -144,7 +144,10 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
         <div className="mb-3">
           <h2 className="text-lg font-bold text-slate-800">Documentos do Candidato</h2>
           <p className="text-sm text-slate-600 mt-1">
-            {candidate.AREAATUACAO} • {candidate.CARGOPRETENDIDO} • {availableDocs.length} documento(s) disponível(s)
+            {candidate.AREAATUACAO}
+            {candidate.CARGOADMIN && ` • Admin: ${candidate.CARGOADMIN}`}
+            {candidate.CARGOASSIS && ` • Assis: ${candidate.CARGOASSIS}`}
+            {` • ${availableDocs.length} documento(s) disponível(s)`}
           </p>
         </div>
 

@@ -19,7 +19,11 @@ function getCandidateArea(c: any): string {
 }
 
 function getCandidateCargo(c: any): string {
-  return getCandidateField(c, 'CARGOPRETENDIDO', 'cargo', 'Cargo');
+  const cargos = [
+    getCandidateField(c, 'CARGOADMIN'),
+    getCandidateField(c, 'CARGOASSIS')
+  ].filter(Boolean);
+  return cargos.length > 0 ? cargos.join(' | ') : getCandidateField(c, 'cargo', 'Cargo');
 }
 
 function getCandidateRegistration(c: any): string {

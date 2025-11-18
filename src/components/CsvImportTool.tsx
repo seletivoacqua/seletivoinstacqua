@@ -111,7 +111,8 @@ export default function CsvImportTool() {
             VAGAPCD: row['VAGAPCD'] || row['Vaga PCD'] || 'Não',
             'LAUDO MEDICO': row['LAUDO MEDICO'] || row['Laudo Médico'] || '',
             AREAATUACAO: row['AREAATUACAO'] || row['Área de Atuação'] || '',
-            CARGOPRETENDIDO: row['CARGOPRETENDIDO'] || row['Cargo Pretendido'] || '',
+            CARGOADMIN: row['CARGOADMIN'] || row['Cargo Administrativo'] || '',
+            CARGOASSIS: row['CARGOASSIS'] || row['Cargo Assistencial'] || '',
             CURRICULOVITAE: row['CURRICULOVITAE'] || row['Currículo Vitae'] || '',
             DOCUMENTOSPESSOAIS: row['DOCUMENTOSPESSOAIS'] || row['Documentos Pessoais'] || '',
             DOCUMENTOSPROFISSIONAIS: row['DOCUMENTOSPROFISSIONAIS'] || row['Documentos Profissionais'] || '',
@@ -203,7 +204,8 @@ export default function CsvImportTool() {
               <div>• VAGAPCD</div>
               <div>• LAUDO MEDICO</div>
               <div>• AREAATUACAO</div>
-              <div>• CARGOPRETENDIDO</div>
+              <div>• CARGOADMIN</div>
+              <div>• CARGOASSIS</div>
               <div>• CURRICULOVITAE</div>
               <div>• DOCUMENTOSPESSOAIS</div>
               <div>• DOCUMENTOSPROFISSIONAIS</div>

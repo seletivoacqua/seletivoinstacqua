@@ -8,7 +8,8 @@ export interface Candidate {
   VAGAPCD: string;
   'LAUDO MEDICO'?: string;
   AREAATUACAO: string;
-  CARGOPRETENDIDO: string;
+  CARGOADMIN?: string;
+  CARGOASSIS?: string;
   CURRICULOVITAE?: string;
   DOCUMENTOSPESSOAIS?: string;
   DOCUMENTOSPROFISSIONAIS?: string;
@@ -39,7 +40,8 @@ export interface CandidateFilters {
   AREAATUACAO?: string;
   search?: string;
   assignedTo?: string;
-  CARGOPRETENDIDO?: string;
+  CARGOADMIN?: string;
+  CARGOASSIS?: string;
   VAGAPCD?: string;
 }
 
@@ -159,7 +161,8 @@ const filterData = (data: any[], filters?: CandidateFilters): any[] => {
   return data.filter(item => {
     if (filters.status && item.status !== filters.status) return false;
     if (filters.AREAATUACAO && item.AREAATUACAO !== filters.AREAATUACAO) return false;
-    if (filters.CARGOPRETENDIDO && item.CARGOPRETENDIDO !== filters.CARGOPRETENDIDO) return false;
+    if (filters.CARGOADMIN && item.CARGOADMIN !== filters.CARGOADMIN) return false;
+    if (filters.CARGOASSIS && item.CARGOASSIS !== filters.CARGOASSIS) return false;
     if (filters.VAGAPCD && item.VAGAPCD !== filters.VAGAPCD) return false;
     if (filters.assignedTo && item.assigned_to !== filters.assignedTo) return false;
 
@@ -169,7 +172,8 @@ const filterData = (data: any[], filters?: CandidateFilters): any[] => {
         item.NOMECOMPLETO,
         item.NOMESOCIAL,
         item.CPF,
-        item.CARGOPRETENDIDO,
+        item.CARGOADMIN,
+        item.CARGOASSIS,
         item.registration_number,
         item.name
       ];
@@ -487,7 +491,7 @@ export const candidateService = {
   async getCargos(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueCargos = [...new Set(allData.map(c => c.CARGOPRETENDIDO))];
+      const uniqueCargos = [...new Set(allData.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS].filter(Boolean)))];
       return uniqueCargos.filter(cargo => cargo && cargo.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar cargos:', error);
@@ -516,7 +520,8 @@ export const candidateService = {
           item.NOMECOMPLETO,
           item.NOMESOCIAL,
           item.CPF,
-          item.CARGOPRETENDIDO,
+          item.CARGOADMIN,
+          item.CARGOASSIS,
           item.registration_number,
           item.name
         ];
