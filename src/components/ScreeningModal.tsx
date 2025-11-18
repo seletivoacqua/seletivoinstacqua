@@ -34,38 +34,6 @@ interface TechnicalEvaluation {
   experiencia: number;
 }
 
-// ✅ FUNÇÃO AUXILIAR PARA GERAR MOTIVO DE DESCLASSIFICAÇÃO
-function gerarMotivoDesclassificacaoAutomatico(params: any): string {
-  const motivos = [];
-  
-  const documentChecks = [
-    { field: 'checkrg-cpf', name: 'RG e CPF' },
-    { field: 'check-cnh', name: 'CNH' },
-    { field: 'check-experiencia', name: 'Experiência Profissional' },
-    { field: 'check-regularidade', name: 'Regularidade Profissional' },
-    { field: 'check-laudo', name: 'Laudo médico (PCD)' },
-    { field: 'check-curriculo', name: 'Currículo' }
-  ];
-
-  const documentosNaoConformes = documentChecks
-    .filter(doc => params[doc.field] === 'nao_conforme')
-    .map(doc => doc.name);
-
-  if (documentosNaoConformes.length > 0) {
-    motivos.push(`Documentos não conformes: ${documentosNaoConformes.join(', ')}`);
-  }
-
-  if (params.disqualification_reason) {
-    motivos.push(params.disqualification_reason);
-  }
-
-  if (motivos.length === 0) {
-    return 'Desclassificado pelo analista';
-  }
-  
-  return motivos.join(' | ');
-}
-
 export default function ScreeningModal({
   isOpen,
   onClose,
@@ -96,95 +64,68 @@ export default function ScreeningModal({
   const [classification, setClassification] = useState<'classificado' | 'desclassificado' | null>(null);
   const [notes, setNotes] = useState('');
 
-  // ✅ FUNÇÃO CORRIGIDA: Integração real com Google Apps Script
+  // ✅ FUNÇÃO SIMPLIFICADA: Usar serviço HTTP
   const submitScreening = async (classificationStatus: 'classificado' | 'desclassificado') => {
     setLoading(true);
 
     try {
-      // ✅ CORREÇÃO: Preparar dados dos documentos no formato EXATO que saveScreening espera
+      console.log('🚀 Iniciando submitScreening...');
+      console.log('📊 Status:', classificationStatus);
+      console.log('👤 Candidato:', candidate.id);
+
+      // ✅ Preparar dados dos documentos
       const documentsData = documents.reduce((acc, doc) => {
-        // Mantém os valores originais: 'conforme', 'nao_conforme', 'nao_se_aplica'
         acc[doc.key] = doc.value;
         return acc;
       }, {} as Record<string, string>);
 
-      console.log('📋 Dados dos documentos:', documentsData);
+      console.log('📋 Documentos:', documentsData);
 
-      // ✅ CORREÇÃO: Preparar dados no formato EXATO que saveScreening espera
+      // ✅ Preparar dados de triagem
       const screeningData: any = {
         candidateId: candidate.id,
         registrationNumber: candidate.registration_number,
         cpf: candidate.CPF,
-        status: classificationStatus, // 'classificado' ou 'desclassificado'
+        status: classificationStatus,
         analystEmail: user?.email || 'unknown@example.com',
         screenedAt: new Date().toISOString(),
         notes: notes || '',
-        // ✅ Incluir todos os checks no formato correto
         ...documentsData
       };
 
-      // ✅ ADICIONAR MOTIVO DE DESCLASSIFICAÇÃO se for desclassificado
-      if (classificationStatus === 'desclassificado') {
-        screeningData.disqualification_reason = disqualificationReason || '';
+      // ✅ Motivo de desclassificação (simplificado)
+      if (classificationStatus === 'desclassificado' && disqualificationReason) {
+        screeningData.disqualification_reason = disqualificationReason;
       }
 
-      // ✅ ADICIONAR AVALIAÇÃO TÉCNICA se for classificado
+      // ✅ Avaliação técnica
       if (classificationStatus === 'classificado') {
         screeningData.capacidade_tecnica = technicalEvaluation.capacidade_tecnica;
         screeningData.experiencia = technicalEvaluation.experiencia;
       }
 
-      console.log('🎯 ENVIANDO PARA saveScreening:', screeningData);
+      console.log('📤 Enviando dados:', JSON.stringify(screeningData, null, 2));
 
-      // ✅ CORREÇÃO: Chamar a função REAL do Google Apps Script
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        console.log('📤 Chamando Google Apps Script...');
+      // ✅ Usar serviço HTTP do Google Sheets
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.saveScreening(screeningData);
 
-        google.script.run
-          .withSuccessHandler((result) => {
-            console.log('✅ saveScreening retornou:', result);
-            setLoading(false);
+      console.log('📥 Resposta recebida:', result);
 
-            if (result.success) {
-              console.log('✅ Triagem salva com sucesso no Google Sheets!');
-              console.log('📊 Status final:', result.status);
-
-              alert(`Triagem salva com sucesso! Status: ${result.status}`);
-              onScreeningComplete();
-              handleClose();
-            } else {
-              console.error('❌ Erro do saveScreening:', result.error);
-              alert(`Erro ao salvar triagem: ${result.error}`);
-            }
-          })
-          .withFailureHandler((error) => {
-            console.error('❌ Falha na chamada do Google Apps Script:', error);
-            setLoading(false);
-            alert('Falha na comunicação com o servidor. Tente novamente.');
-          })
-          .saveScreening(screeningData);
-
-      } else {
-        // ✅ CORREÇÃO: Fallback para desenvolvimento (simulação realista)
-        console.log('🔧 Modo desenvolvimento: simulando saveScreening...');
-
-        // Simulação mais realista baseada na função real
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        console.log('✅ Simulação: Triagem salva com sucesso!');
-        console.log('📊 Status:', classificationStatus);
-        console.log('👤 Candidato ID:', candidate.id);
-
-        alert(`[SIMULAÇÃO] Triagem salva com sucesso! Status: ${classificationStatus}`);
-
-        // ✅ CORREÇÃO: Chamar callbacks mesmo na simulação
+      if (result.success) {
+        console.log('✅ Triagem salva com sucesso!');
+        alert(`Triagem salva com sucesso! Status: ${result.status || classificationStatus}`);
         onScreeningComplete();
         handleClose();
+      } else {
+        console.error('❌ Erro:', result.error);
+        alert(`Erro ao salvar: ${result.error || 'Erro desconhecido'}`);
       }
 
     } catch (error) {
       console.error('❌ Erro ao processar triagem:', error);
-      alert('Erro ao salvar triagem. Tente novamente.');
+      alert(`Erro ao salvar triagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
       setLoading(false);
     }
   };
