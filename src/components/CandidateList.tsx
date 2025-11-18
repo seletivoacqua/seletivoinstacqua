@@ -1,258 +1,324 @@
-import { useState } from 'react';
-import { Candidate } from '../types/candidate';
-import { UserCheck, UserX, AlertTriangle, Clock, Search } from 'lucide-react';
-import CandidateDetailView from './CandidateDetailView';
+import { useState, useEffect } from 'react';
+import { Users, ChevronRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { candidateService, Candidate } from '../services/candidateService';
+import { getAnalysts, assignCandidates } from '../services/userService';
+import { User } from '../contexts/AuthContext';
 
-interface CandidateListProps {
-  candidates: Candidate[];
-  selectedCandidate: Candidate | null;
-  onSelectCandidate: (candidate: Candidate) => void;
-  filterArea: string;
-  filterCargo: string;
-  filterStatus: string;
-  filterNome: string;
-  onFilterAreaChange: (area: string) => void;
-  onFilterCargoChange: (cargo: string) => void;
-  onFilterStatusChange: (status: string) => void;
-  onFilterNomeChange: (nome: string) => void;
+interface AssignmentPanelProps {
+  adminId: string;
+  onAssignmentComplete: () => void;
 }
 
-export default function CandidateList({
-  candidates,
-  selectedCandidate,
-  onSelectCandidate,
-  filterArea,
-  filterCargo,
-  filterStatus,
-  filterNome,
-  onFilterAreaChange,
-  onFilterCargoChange,
-  onFilterStatusChange,
-  onFilterNomeChange
-}: CandidateListProps) {
-  const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null);
+function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps) {
+  const [analysts, setAnalysts] = useState<User[]>([]);
+  const [unassignedCandidates, setUnassignedCandidates] = useState<Candidate[]>([]);
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set()); // Agora armazena CPFs
+  const [selectedAnalyst, setSelectedAnalyst] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [loadingAnalysts, setLoadingAnalysts] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [error, setError] = useState<string>('');
 
-  const filteredCandidates = candidates.filter(candidate => {
-    // Filtro por área
-    const areaMatch = filterArea === 'all' || candidate.AREAATUACAO === filterArea;
-    
-    // Filtro por cargo - ATUALIZADO
-    const cargoMatch = filterCargo === 'all' || 
-                      candidate.CARGOADMIN === filterCargo || 
-                      candidate.CARGOASSIS === filterCargo;
-    
-    // Filtro por status
-    const statusMatch = filterStatus === 'all' || 
-                       (filterStatus === 'pending' && !candidate.Status) ||
-                       candidate.Status === filterStatus;
-    
-    // Filtro por nome (busca parcial case insensitive)
-    const nomeMatch = filterNome === '' || 
-                     candidate.NOMECOMPLETO?.toLowerCase().includes(filterNome.toLowerCase()) ||
-                     candidate.NOMESOCIAL?.toLowerCase().includes(filterNome.toLowerCase());
+  useEffect(() => {
+    loadAnalysts();
+    loadUnassignedCandidates();
+  }, [page]);
 
-    return areaMatch && cargoMatch && statusMatch && nomeMatch;
-  });
-
-  // Obter áreas únicas para o filtro
-  const areas = Array.from(new Set(
-    candidates.map(c => c.AREAATUACAO).filter(Boolean)
-  )).sort();
-
-  // Obter cargos únicos para o filtro - ATUALIZADO
-  const cargos = Array.from(new Set(
-    candidates.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS]).filter(Boolean)
-  )).sort();
-
-  const getStatusIcon = (status?: string) => {
-    switch (status) {
-      case 'Classificado':
-        return <UserCheck className="w-4 h-4 text-green-600" />;
-      case 'Desclassificado':
-        return <UserX className="w-4 h-4 text-red-600" />;
-      case 'Revisar':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-      default:
-        return <Clock className="w-4 h-4 text-slate-400" />;
+  async function loadAnalysts() {
+    try {
+      setLoadingAnalysts(true);
+      setError('');
+      const data = await getAnalysts();
+      setAnalysts(data);
+      if (data.length === 0) {
+        setError('Nenhum analista encontrado. Verifique se há analistas cadastrados no sistema.');
+      }
+    } catch (error) {
+      console.error('Erro ao carregar analistas:', error);
+      setError('Erro ao carregar lista de analistas. Tente novamente.');
+      setAnalysts([]);
+    } finally {
+      setLoadingAnalysts(false);
     }
-  };
+  }
 
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case 'Classificado':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'Desclassificado':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'Revisar':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default:
-        return 'bg-slate-100 text-slate-600 border-slate-200';
+  async function loadUnassignedCandidates() {
+    try {
+      setLoading(true);
+      const response = await candidateService.getUnassignedCandidates(page, 50);
+      setUnassignedCandidates(response.data);
+      setTotalPages(response.totalPages);
+    } catch (error) {
+      console.error('Erro ao carregar candidatos:', error);
+      setError('Erro ao carregar candidatos não alocados.');
+    } finally {
+      setLoading(false);
     }
+  }
+
+  // Toggle usando CPF como identificador único
+  const toggleCandidate = (cpf: string) => {
+    setSelectedCandidates(prev => {
+      const next = new Set(prev);
+      if (next.has(cpf)) {
+        next.delete(cpf);
+      } else {
+        next.add(cpf);
+      }
+      return next;
+    });
   };
 
-  const handleCandidateClick = (candidate: Candidate) => {
-    setDetailCandidate(candidate);
-  };
+  async function handleAssign() {
+    if (!selectedAnalyst || selectedCandidates.size === 0) {
+      alert('Selecione um analista e pelo menos um candidato');
+      return;
+    }
 
-  // Função para exibir os cargos do candidato - NOVA
-  const renderCargos = (candidate: Candidate) => {
-    const cargos = [];
-    if (candidate.CARGOADMIN) cargos.push(`Admin: ${candidate.CARGOADMIN}`);
-    if (candidate.CARGOASSIS) cargos.push(`Assis: ${candidate.CARGOASSIS}`);
-    
-    return cargos.length > 0 ? cargos.join(' | ') : null;
-  };
+    try {
+      setLoading(true);
+      await assignCandidates({
+        candidateIds: Array.from(selectedCandidates), // Agora são CPFs
+        analystId: selectedAnalyst,
+        adminId,
+      });
+
+      setSelectedCandidates(new Set());
+      setSelectedAnalyst('');
+      await loadUnassignedCandidates();
+      onAssignmentComplete();
+      alert(`${selectedCandidates.size} candidato(s) alocado(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao alocar candidatos:', error);
+      alert('Erro ao alocar candidatos');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const analystWorkload = analysts.reduce((acc, analyst) => {
+    acc[analyst.id] = unassignedCandidates.filter(c => c.assigned_to === analyst.id).length;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
-    <>
-      {detailCandidate && (
-        <CandidateDetailView
-          candidate={detailCandidate}
-          onClose={() => setDetailCandidate(null)}
-        />
-      )}
+    <div className="h-full flex flex-col bg-white">
+      <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <Users className="w-6 h-6 text-blue-600" />
+              Alocação de Candidatos
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Atribua candidatos para os analistas realizarem a triagem
+            </p>
+          </div>
+          <button
+            onClick={loadAnalysts}
+            disabled={loadingAnalysts}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingAnalysts ? 'animate-spin' : ''}`} />
+            Recarregar Analistas
+          </button>
+        </div>
+      </div>
 
-      <div className="flex flex-col h-full bg-white border-r border-slate-200">
-        <div className="p-4 border-b border-slate-200 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">
-            Candidatos ({filteredCandidates.length})
-          </h2>
+      <div className="flex-1 overflow-auto p-6">
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              ×
+            </button>
+          </div>
+        )}
 
-          <div className="space-y-3">
-            {/* Filtro por Nome */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Buscar por Nome
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
-                  type="text"
-                  value={filterNome}
-                  onChange={(e) => onFilterNomeChange(e.target.value)}
-                  placeholder="Digite o nome completo ou social..."
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Candidatos Não Alocados ({unassignedCandidates.length})
+              </h3>
+              <div className="text-sm text-gray-500">
+                Marque os checkboxes para selecionar
               </div>
             </div>
 
-            {/* Filtro por Área */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Área de Atuação
-              </label>
-              <select
-                value={filterArea}
-                onChange={(e) => onFilterAreaChange(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="all">Todas as Áreas</option>
-                {areas.map(area => (
-                  <option key={area} value={area}>{area}</option>
-                ))}
-              </select>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : unassignedCandidates.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <p className="text-gray-500">Nenhum candidato não alocado encontrado</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {unassignedCandidates.map(candidate => {
+                  const cpf = candidate.CPF;
+
+                  return (
+                    <div
+                      key={cpf}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedCandidates.has(cpf)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <label className="flex items-center cursor-pointer select-none mt-0.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidates.has(cpf)}
+                            onChange={() => toggleCandidate(cpf)}
+                            className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                        </label>
+
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">
+                            {candidate.NOMECOMPLETO || candidate.name}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            CPF: {cpf} • Área: {candidate.AREAATUACAO || 'Não informada'}
+                          </div>
+                          {(candidate.CARGOADMIN || candidate.CARGOASSIS) && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Cargos:
+                              {candidate.CARGOADMIN && ` Admin: ${candidate.CARGOADMIN}`}
+                              {candidate.CARGOADMIN && candidate.CARGOASSIS && ' | '}
+                              {candidate.CARGOASSIS && ` Assis: ${candidate.CARGOASSIS}`}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 bg-white border rounded-lg disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-gray-600">
+                  Página {page} de {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 bg-white border rounded-lg disabled:opacity-50"
+                >
+                  Próxima
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Painel lateral - sem alterações */}
+          <div className="space-y-4">
+            <div className="bg-white border rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Alocar para Analista</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecione o Analista
+                  </label>
+                  {loadingAnalysts ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                      <span className="ml-2 text-sm text-gray-600">Carregando analistas...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedAnalyst}
+                      onChange={(e) => setSelectedAnalyst(e.target.value)}
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={analysts.length === 0}
+                    >
+                      <option value="">
+                        {analysts.length === 0 ? 'Nenhum analista disponível' : 'Escolha um analista...'}
+                      </option>
+                      {analysts.map(analyst => (
+                        <option key={analyst.id} value={analyst.id}>
+                          {analyst.name} ({analyst.role})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <div className="text-sm text-gray-600 mb-2">
+                    Candidatos selecionados: <span className="font-semibold text-blue-600">{selectedCandidates.size}</span>
+                  </div>
+                  {selectedCandidates.size > 0 && (
+                    <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                      ✅ {selectedCandidates.size} candidato(s) pronto(s) para alocação
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleAssign}
+                  disabled={!selectedAnalyst || selectedCandidates.size === 0 || loading}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Alocando...
+                    </>
+                  ) : (
+                    <>
+                      Alocar {selectedCandidates.size} Candidato(s)
+                      <ChevronRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Filtro por Cargo - ATUALIZADO */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Cargo (Admin/Assistencial)
-              </label>
-              <select
-                value={filterCargo}
-                onChange={(e) => onFilterCargoChange(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="all">Todos os Cargos</option>
-                {cargos.map(cargo => (
-                  <option key={cargo} value={cargo}>{cargo}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro por Status */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Status
-              </label>
-              <select
-                value={filterStatus}
-                onChange={(e) => onFilterStatusChange(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="all">Todos os Status</option>
-                <option value="pending">Pendentes</option>
-                <option value="Classificado">Classificados</option>
-                <option value="Desclassificado">Desclassificados</option>
-                <option value="Revisar">Para Revisar</option>
-              </select>
+            <div className="bg-gray-50 border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-800 mb-3">Carga de Trabalho</h4>
+              {analysts.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-2">Nenhum analista carregado</p>
+              ) : (
+                <div className="space-y-2">
+                  {analysts.map(analyst => (
+                    <div
+                      key={analyst.id}
+                      className={`flex justify-between items-center text-sm p-2 rounded ${
+                        selectedAnalyst === analyst.id ? 'bg-blue-100 border border-blue-200' : ''
+                      }`}
+                    >
+                      <span className="text-gray-700">{analyst.name}</span>
+                      <span className="font-semibold text-gray-900">
+                        {analystWorkload[analyst.id] || 0} candidatos
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {filteredCandidates.map((candidate) => (
-            <button
-              key={candidate.CPF}
-              onClick={() => handleCandidateClick(candidate)}
-              className={`w-full p-4 text-left border-b border-slate-200 hover:bg-blue-50 transition-colors ${
-                selectedCandidate?.CPF === candidate.CPF
-                  ? 'bg-blue-100 border-l-4 border-l-blue-600'
-                  : ''
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-800 text-sm leading-tight">
-                    {candidate.NOMECOMPLETO}
-                  </h3>
-                  {candidate.NOMESOCIAL && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      Nome Social: {candidate.NOMESOCIAL}
-                    </p>
-                  )}
-                </div>
-                {getStatusIcon(candidate.Status)}
-              </div>
-
-              <div className="space-y-1">
-                {candidate.AREAATUACAO && (
-                  <p className="text-xs text-slate-600">
-                    <span className="font-medium">Área:</span> {candidate.AREAATUACAO}
-                  </p>
-                )}
-                {/* EXIBIÇÃO DOS CARGOS - ATUALIZADO */}
-                {renderCargos(candidate) && (
-                  <p className="text-xs text-slate-600">
-                    <span className="font-medium">Cargos:</span> {renderCargos(candidate)}
-                  </p>
-                )}
-                <p className="text-xs text-slate-500">
-                  <span className="font-medium">CPF:</span> {candidate.CPF}
-                </p>
-                {candidate.VAGAPCD && candidate.VAGAPCD !== 'Não' && (
-                  <p className="text-xs text-orange-600 font-medium">
-                    ⚠️ Vaga PCD: {candidate.VAGAPCD}
-                  </p>
-                )}
-              </div>
-
-              {candidate.Status && (
-                <div className={`mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(candidate.Status)}`}>
-                  {candidate.Status}
-                </div>
-              )}
-            </button>
-          ))}
-
-          {filteredCandidates.length === 0 && (
-            <div className="p-8 text-center text-slate-500">
-              <p className="text-sm">Nenhum candidato encontrado</p>
-              <p className="text-xs mt-1">Tente ajustar os filtros</p>
-            </div>
-          )}
-        </div>
       </div>
-    </>
+    </div>
   );
 }
+
+export default AssignmentPanel;
