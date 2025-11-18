@@ -34,6 +34,38 @@ interface TechnicalEvaluation {
   experiencia: number;
 }
 
+// ✅ FUNÇÃO AUXILIAR PARA GERAR MOTIVO DE DESCLASSIFICAÇÃO
+function gerarMotivoDesclassificacaoAutomatico(params: any): string {
+  const motivos = [];
+  
+  const documentChecks = [
+    { field: 'checkrg-cpf', name: 'RG e CPF' },
+    { field: 'check-cnh', name: 'CNH' },
+    { field: 'check-experiencia', name: 'Experiência Profissional' },
+    { field: 'check-regularidade', name: 'Regularidade Profissional' },
+    { field: 'check-laudo', name: 'Laudo médico (PCD)' },
+    { field: 'check-curriculo', name: 'Currículo' }
+  ];
+
+  const documentosNaoConformes = documentChecks
+    .filter(doc => params[doc.field] === 'nao_conforme')
+    .map(doc => doc.name);
+
+  if (documentosNaoConformes.length > 0) {
+    motivos.push(`Documentos não conformes: ${documentosNaoConformes.join(', ')}`);
+  }
+
+  if (params.disqualification_reason) {
+    motivos.push(params.disqualification_reason);
+  }
+
+  if (motivos.length === 0) {
+    return 'Desclassificado pelo analista';
+  }
+  
+  return motivos.join(' | ');
+}
+
 export default function ScreeningModal({
   isOpen,
   onClose,
@@ -64,22 +96,33 @@ export default function ScreeningModal({
   const [classification, setClassification] = useState<'classificado' | 'desclassificado' | null>(null);
   const [notes, setNotes] = useState('');
 
-  // Função para enviar a triagem
+  // ✅ FUNÇÃO CORRIGIDA: Enviar triagem
   const submitScreening = async (classificationStatus: 'classificado' | 'desclassificado') => {
     setLoading(true);
     
     try {
-      // Preparar os dados para envio
+      // Preparar dados dos documentos
+      const documentsData = documents.reduce((acc, doc) => {
+        acc[doc.key] = doc.value;
+        return acc;
+      }, {} as Record<string, string>);
+
+      // ✅ CORREÇÃO: Usar a função auxiliar para gerar o motivo
+      const motivoDesclassificacao = classificationStatus === 'desclassificado' 
+        ? gerarMotivoDesclassificacaoAutomatico({
+            ...documentsData,
+            disqualification_reason: disqualificationReason
+          })
+        : null;
+
+      // Preparar os dados completos para envio
       const screeningData = {
         candidate_id: candidate.id,
         status: classificationStatus === 'classificado' ? 'Classificado' : 'Desclassificado',
-        documents: documents.reduce((acc, doc) => {
-          acc[doc.key] = doc.value;
-          return acc;
-        }, {} as Record<string, string>),
+        documents: documentsData,
         technical_evaluation: classificationStatus === 'classificado' ? technicalEvaluation : null,
         notes: formatNotes(classificationStatus),
-        disqualification_reason: classificationStatus === 'desclassificado' ? getDisqualificationReason() : null,
+        disqualification_reason: motivoDesclassificacao,
         total_score: classificationStatus === 'classificado' 
           ? technicalEvaluation.capacidade_tecnica + technicalEvaluation.experiencia 
           : 0,
@@ -88,27 +131,28 @@ export default function ScreeningModal({
       };
 
       console.log('🎯 ENVIANDO TRIAGEM:', screeningData);
+      console.log('📋 Motivo da desclassificação:', motivoDesclassificacao);
 
-      // SIMULAÇÃO DE CHAMADA API - REMOVA ESTA PARTE E USE SUA API REAL
-      console.log('📤 Simulando envio para API...');
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // ✅ CORREÇÃO: Simulação mais realista da API
+      console.log('📤 Simulando chamada API para salvar triagem...');
       
-      // Aqui você faria a chamada real para sua API
+      // Simulação de chamada API
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Aqui você substituiria pela sua API real:
       // const response = await fetch('/api/screening', {
       //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
+      //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(screeningData)
       // });
-
-      // if (!response.ok) {
-      //   throw new Error('Erro ao salvar triagem');
-      // }
-
-      console.log('✅ Triagem salva com sucesso! Status:', classificationStatus);
       
-      // Chamar callback de sucesso
+      // if (!response.ok) throw new Error('Erro ao salvar triagem');
+
+      console.log('✅ Triagem salva com sucesso!');
+      console.log('📊 Status final:', screeningData.status);
+      console.log('📝 Motivo:', screeningData.disqualification_reason);
+      
+      // ✅ CORREÇÃO: Chamar callbacks na ordem correta
       onScreeningComplete();
       handleClose();
       
@@ -207,7 +251,7 @@ export default function ScreeningModal({
     setCurrentStep('technical');
   };
 
-  // Função para desclassificar candidato - CORRIGIDA
+  // ✅ FUNÇÃO CORRIGIDA: Desclassificar candidato
   const handleDisqualify = async () => {
     if (!allRequiredDocumentsEvaluated()) {
       alert('Avalie todos os documentos obrigatórios antes de desclassificar.');
@@ -215,8 +259,10 @@ export default function ScreeningModal({
     }
 
     console.log('🎯 INICIANDO DESCLASSIFICAÇÃO...');
+    console.log('📋 Documentos avaliados:', documents.map(d => ({ name: d.name, value: d.value })));
+    console.log('📝 Motivo adicional:', disqualificationReason);
     
-    // Chama diretamente a função de submit com o status correto
+    // ✅ CORREÇÃO: Chama diretamente com o status correto
     await submitScreening('desclassificado');
   };
 
