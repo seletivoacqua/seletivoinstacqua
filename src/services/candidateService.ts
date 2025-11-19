@@ -97,24 +97,39 @@ class GoogleSheetsService {
     }
   }
 
-  async getCandidates(): Promise<Candidate[]> {
-    console.log('📞 Chamando getCandidates do Google Sheets...');
-    const result = await this.fetchData('getCandidates');
-    console.log('📥 Resultado completo recebido:', result);
-    console.log('📊 result.data:', result.data);
-    console.log('📊 result.data?.candidates:', result.data?.candidates);
+  async getCandidates(bustCache: boolean = false): Promise<Candidate[]> {
+    console.log('📞 Chamando getCandidates do Google Sheets...', bustCache ? '(forçando atualização)' : '');
 
-    // O Google Apps Script retorna { success: true, data: { candidates: [...] } }
+    const url = new URL(this.scriptUrl);
+    url.searchParams.append('action', 'getCandidates');
+
+    if (bustCache) {
+      url.searchParams.append('_t', Date.now().toString());
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('📥 Resultado completo recebido:', result);
+
     const candidatesArray = result.data?.candidates || result.candidates || [];
-    console.log('✅ Array de candidatos extraído:', candidatesArray);
-    console.log('📏 Total de candidatos:', candidatesArray.length);
+    console.log('✅ Array de candidatos extraído:', candidatesArray.length);
 
     if (candidatesArray.length > 0) {
       console.log('👤 Exemplo do primeiro candidato:', candidatesArray[0]);
     }
 
     return candidatesArray.map((candidate: any, index: number) => {
-      // Garantir ID único: usar CPF ou gerar um ID baseado no índice
       const candidateId = candidate.CPF || candidate.id || `candidate_${index}_${Date.now()}`;
 
       const normalized: any = {
@@ -126,7 +141,6 @@ class GoogleSheetsService {
         status: (candidate.Status || candidate.status || 'pendente').toLowerCase(),
         Status: candidate.Status || candidate.status || 'pendente',
 
-        // CORREÇÃO: Mapear assigned_to e Analista corretamente
         assigned_to: candidate.assigned_to || candidate.Analista || null,
         Analista: candidate.Analista || candidate.assigned_to || null,
         assigned_at: candidate.assigned_at || null,
@@ -225,14 +239,15 @@ export const candidateService = {
     page: number = 1,
     pageSize: number = 50,
     filters?: CandidateFilters,
-    userId?: string
+    userId?: string,
+    bustCache: boolean = false
   ): Promise<PaginatedResponse<Candidate>> {
     try {
-      console.log('📊 [CandidateService] Buscando candidatos...');
+      console.log('📊 [CandidateService] Buscando candidatos...', bustCache ? '(forçando atualização)' : '');
       console.log('📊 [CandidateService] UserId:', userId);
       console.log('📊 [CandidateService] Filters:', filters);
 
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(bustCache);
       console.log('📦 [CandidateService] Total de candidatos carregados:', allData.length);
 
       if (allData.length > 0) {

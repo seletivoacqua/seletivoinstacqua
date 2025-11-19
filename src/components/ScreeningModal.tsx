@@ -136,8 +136,8 @@ export default function ScreeningModal({
       if (result.success) {
         console.log('✅ SUCESSO! Status retornado:', result.status);
         alert(`Triagem salva com sucesso!\nStatus: ${result.status || classificationStatus}`);
-        onScreeningComplete();
         handleClose();
+        onScreeningComplete();
       } else {
         console.error('❌ ERRO DO SERVIDOR:', result.error);
         alert(`Erro ao salvar: ${result.error || 'Erro desconhecido'}`);
