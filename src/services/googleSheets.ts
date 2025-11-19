@@ -86,6 +86,58 @@ async function makeRequest(
   return executeRequest();
 }
 
+async function makePostRequest(
+  action: string,
+  params: any = {}
+): Promise<GoogleSheetsResponse> {
+  const startTime = Date.now();
+
+  try {
+    console.log('📤 POST Request:', action);
+    console.log('📦 Payload:', JSON.stringify(params, null, 2));
+
+    const payload = {
+      action,
+      ...params
+    };
+
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    console.log('📡 Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Response error:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Response data:', data);
+
+    const duration = Date.now() - startTime;
+    performanceMonitor.logRequest(action, duration, false);
+
+    return data;
+  } catch (error) {
+    console.error(`❌ Erro crítico na requisição POST ${action}:`, error);
+    const duration = Date.now() - startTime;
+    performanceMonitor.logRequest(action, duration, false);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro na requisição'
+    };
+  }
+}
+
 export const googleSheetsService = {
   async getCandidates(filters?: any): Promise<GoogleSheetsResponse> {
     return makeRequest('getCandidates', filters);
@@ -266,12 +318,16 @@ export const googleSheetsService = {
   },
 
   async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
-    const result = await makeRequest('saveScreening', screeningData, { cache: false, deduplicate: false });
+    console.log('🔄 saveScreening - Usando POST para enviar dados');
+    const result = await makePostRequest('saveScreening', screeningData);
 
     if (result.success) {
+      console.log('✅ Triagem salva - Invalidando cache');
       cacheService.invalidatePattern(/getCandidates/);
       cacheService.invalidatePattern(/getCandidatesByStatus/);
       cacheService.invalidatePattern(/getReportStats/);
+    } else {
+      console.error('❌ Falha ao salvar triagem:', result.error);
     }
 
     return result;
