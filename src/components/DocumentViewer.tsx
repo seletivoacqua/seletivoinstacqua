@@ -194,39 +194,30 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
-      <div className="p-4 bg-white border-b border-slate-200 flex-shrink-0">
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-slate-800">{candidate.NOMECOMPLETO || candidate.name}</h2>
+      <div className="p-3 bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="mb-2">
+          <h2 className="text-lg font-bold text-slate-800">{candidate.NOMECOMPLETO || candidate.name}</h2>
           {candidate.NOMESOCIAL && (
-            <p className="text-sm text-slate-600 mt-1">Nome Social: {candidate.NOMESOCIAL}</p>
+            <p className="text-xs text-slate-600 mt-0.5">Nome Social: {candidate.NOMESOCIAL}</p>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
+        <div className="grid grid-cols-3 gap-2 mb-2 p-2 bg-slate-50 rounded text-xs">
           <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">Inscrição</p>
-            <p className="text-sm text-slate-800 font-medium">{candidate.registration_number}</p>
+            <p className="text-slate-500 uppercase font-semibold">CPF</p>
+            <p className="text-slate-800 font-medium">{candidate.CPF}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">CPF</p>
-            <p className="text-sm text-slate-800 font-medium">{candidate.CPF}</p>
+            <p className="text-slate-500 uppercase font-semibold">Área</p>
+            <p className="text-slate-800 font-medium">{candidate.AREAATUACAO}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">Área de Atuação</p>
-            <p className="text-sm text-slate-800 font-medium">{candidate.AREAATUACAO}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">Cargos</p>
-            <p className="text-sm text-slate-800 font-medium">{renderCargos()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 uppercase font-semibold">Vaga PCD</p>
-            <p className="text-sm text-slate-800 font-medium">{candidate.VAGAPCD || 'Não'}</p>
+            <p className="text-slate-500 uppercase font-semibold">PCD</p>
+            <p className="text-slate-800 font-medium">{candidate.VAGAPCD || 'Não'}</p>
           </div>
         </div>
 
-        <div className="mb-3">
-          <h3 className="text-sm font-bold text-slate-700 mb-2">Documentos</h3>
+        <div className="mb-2">
           <p className="text-xs text-slate-600">
             {availableDocs.length} documento(s) disponível(s)
           </p>
@@ -237,14 +228,14 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
             <button
               key={doc.key}
               onClick={() => handleDocumentSelect(doc.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 transition-all whitespace-nowrap text-xs ${
                 selectedDoc === doc.key
                   ? 'bg-blue-600 text-white border-blue-600 shadow-md'
                   : 'bg-white text-slate-700 border-slate-300 hover:border-blue-400 hover:bg-blue-50'
               } ${doc.isPrimary ? 'font-semibold border-blue-300' : ''}`}
             >
-              {doc.icon}
-              <span className="text-sm">{doc.label}</span>
+              <span className="w-4 h-4">{doc.icon}</span>
+              <span>{doc.label}</span>
             </button>
           ))}
         </div>
