@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { candidateService, Candidate } from '../services/candidateService';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye, ClipboardCheck } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye, ClipboardCheck, Search } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
 import ScreeningModal from './ScreeningModal';
 
@@ -16,6 +16,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showScreeningModal, setShowScreeningModal] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
@@ -137,6 +138,15 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     }
   }
 
+  const filteredCandidates = candidates.filter(candidate => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    const name = (candidate.NOMECOMPLETO || candidate.name || '').toLowerCase();
+    const registration = (candidate.registration_number || '').toLowerCase();
+    const cpf = (candidate.CPF || '').toLowerCase();
+    return name.includes(searchLower) || registration.includes(searchLower) || cpf.includes(searchLower);
+  });
+
   // Função para traduzir o status para exibição
   function getStatusDisplay(status: string) {
     const statusMap: { [key: string]: string } = {
@@ -233,10 +243,34 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
           <div className="p-4 border-b flex-shrink-0">
             <h2 className="font-semibold text-gray-800">Lista de Candidatos</h2>
             <p className="text-xs text-gray-600 mt-1">Total: {candidates.length}</p>
+
+            <div className="mt-3 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nome, CPF ou inscrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-2">
-              {candidates.map(candidate => (
+            {filteredCandidates.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                {searchTerm ? 'Nenhum candidato encontrado' : 'Nenhum candidato disponível'}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredCandidates.map(candidate => (
                 <div
                   key={candidate.id}
                   onClick={() => setSelectedCandidate(candidate)}
@@ -259,7 +293,8 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
