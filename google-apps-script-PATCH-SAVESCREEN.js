@@ -1928,16 +1928,9 @@ function getReport(params) {
 
 function saveScreening(params) {
   try {
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('📝 INICIANDO saveScreening');
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('📋 Parâmetros recebidos:');
-    Logger.log('   - candidateId: ' + params.candidateId);
-    Logger.log('   - registrationNumber: ' + params.registrationNumber);
-    Logger.log('   - cpf: ' + params.cpf);
-    Logger.log('   - status (RAW): "' + params.status + '"');
-    Logger.log('   - tipo do status: ' + typeof params.status);
-    Logger.log('   - analystEmail: ' + params.analystEmail);
+    Logger.log('saveScreening INICIADO');
+    Logger.log('candidateId: ' + params.candidateId);
+    Logger.log('status: ' + params.status);
 
     const sh = _sheet(SHEET_CANDIDATOS);
     const headers = _getHeaders_(sh);
@@ -1957,8 +1950,6 @@ function saveScreening(params) {
     const pontuacaoTotalCol = col['pontuacao_triagem'];
     const motivoCol = col['Motivo Desclassificação'];
 
-    Logger.log('📊 Índice da coluna Status: ' + statusCol);
-
     const idx = _getIndex_(sh, headers);
     const searchKey = String(params.candidateId || params.registrationNumber || params.cpf).trim();
     let row = idx[searchKey];
@@ -1971,56 +1962,35 @@ function saveScreening(params) {
     }
 
     if (!row) {
-      Logger.log('❌ Candidato não encontrado: ' + searchKey);
       throw new Error('Candidato não encontrado: ' + searchKey);
     }
 
-    Logger.log('📍 Candidato encontrado na linha: ' + row);
+    Logger.log('Linha: ' + row);
 
     const lastCol = sh.getLastColumn();
     const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
 
-    // ✅ LÓGICA DE STATUS COM LOG DETALHADO
-    Logger.log('───────────────────────────────────────');
-    Logger.log('🔍 PROCESSANDO STATUS:');
-    Logger.log('   - Status recebido: "' + params.status + '"');
-    Logger.log('   - Comparação (params.status === "classificado"): ' + (params.status === 'classificado'));
-    Logger.log('   - Comparação (params.status === "desclassificado"): ' + (params.status === 'desclassificado'));
-
     let statusFinal;
     if (params.status === 'classificado') {
       statusFinal = 'Classificado';
-      Logger.log('   ✅ Status será: Classificado');
     } else if (params.status === 'desclassificado') {
       statusFinal = 'Desclassificado';
-      Logger.log('   ❌ Status será: Desclassificado');
     } else {
       statusFinal = 'Desclassificado';
-      Logger.log('   ⚠️ Status não reconhecido, usando padrão: Desclassificado');
     }
 
     if (statusCol >= 0) {
       rowVals[statusCol] = statusFinal;
-      Logger.log('   📝 Status gravado na coluna ' + statusCol + ': "' + statusFinal + '"');
-    } else {
-      Logger.log('   ⚠️ Coluna Status não encontrada!');
     }
-    Logger.log('───────────────────────────────────────');
 
-    // Analista
     if (analistaCol >= 0 && params.analystEmail) {
       rowVals[analistaCol] = params.analystEmail;
-      Logger.log('👤 Analista: ' + params.analystEmail);
     }
 
-    // Data triagem
     if (dataTriagemCol >= 0) {
       rowVals[dataTriagemCol] = params.screenedAt || getCurrentTimestamp();
-      Logger.log('📅 Data triagem: ' + rowVals[dataTriagemCol]);
     }
 
-    // Documentos
-    Logger.log('📋 Salvando documentos:');
     const updateDocument = (colIndex, value, fieldName) => {
       if (colIndex >= 0 && value !== undefined && value !== null) {
         let convertedValue = '';
@@ -2039,7 +2009,6 @@ function saveScreening(params) {
             convertedValue = String(value || '');
         }
         rowVals[colIndex] = convertedValue;
-        Logger.log(`   - ${fieldName}: ${convertedValue} (original: ${value})`);
       }
     };
 
@@ -2050,24 +2019,19 @@ function saveScreening(params) {
     updateDocument(checkLaudoCol, params['check-laudo'], 'Laudo PCD');
     updateDocument(checkCurriculoCol, params['check-curriculo'], 'Currículo');
 
-    // Avaliação técnica (apenas para classificados)
     if (statusFinal === 'Classificado') {
       if (capacidadeTecnicaCol >= 0 && params.capacidade_tecnica !== undefined) {
         rowVals[capacidadeTecnicaCol] = Number(params.capacidade_tecnica) || 0;
-        Logger.log('   - Capacidade técnica: ' + rowVals[capacidadeTecnicaCol]);
       }
       if (experienciaCol >= 0 && params.experiencia !== undefined) {
         rowVals[experienciaCol] = Number(params.experiencia) || 0;
-        Logger.log('   - Experiência: ' + rowVals[experienciaCol]);
       }
       if (pontuacaoTotalCol >= 0) {
         const total = (Number(params.capacidade_tecnica) || 0) + (Number(params.experiencia) || 0);
         rowVals[pontuacaoTotalCol] = total;
-        Logger.log('   - Total score: ' + total);
       }
     }
 
-    // Motivo desclassificação (apenas para desclassificados)
     if (statusFinal === 'Desclassificado' && motivoCol >= 0) {
       let motivo = '';
       const docsNaoConformes = [];
@@ -2080,11 +2044,11 @@ function saveScreening(params) {
       if (params['check-curriculo'] === 'nao_conforme') docsNaoConformes.push('Currículo');
 
       if (docsNaoConformes.length > 0) {
-        motivo = `Documentos não conformes: ${docsNaoConformes.join(', ')}`;
+        motivo = 'Documentos não conformes: ' + docsNaoConformes.join(', ');
       }
 
       if (params.disqualification_reason) {
-        motivo = motivo ? `${motivo} | ${params.disqualification_reason}` : params.disqualification_reason;
+        motivo = motivo ? motivo + ' | ' + params.disqualification_reason : params.disqualification_reason;
       }
 
       if (!motivo) {
@@ -2092,24 +2056,16 @@ function saveScreening(params) {
       }
 
       rowVals[motivoCol] = motivo;
-      Logger.log('📝 Motivo desclassificação: ' + motivo);
     }
 
-    // Observações
     if (observacoesCol >= 0 && params.notes) {
       rowVals[observacoesCol] = params.notes;
-      Logger.log('📝 Observações salvas');
     }
 
-    // Salvar
     _writeWholeRow_(sh, row, rowVals);
     _bumpRev_();
 
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('✅ TRIAGEM SALVA COM SUCESSO');
-    Logger.log('   - Status final gravado: "' + statusFinal + '"');
-    Logger.log('   - Linha: ' + row);
-    Logger.log('═══════════════════════════════════════');
+    Logger.log('SUCESSO: ' + statusFinal);
 
     return {
       success: true,
@@ -2118,16 +2074,11 @@ function saveScreening(params) {
       status: statusFinal
     };
   } catch (error) {
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('❌ ERRO EM saveScreening');
-    Logger.log('   Erro: ' + error.toString());
-    Logger.log('   Stack: ' + error.stack);
-    Logger.log('═══════════════════════════════════════');
+    Logger.log('ERRO: ' + error.toString());
 
     return {
       success: false,
-      error: 'Falha ao salvar triagem: ' + error.toString(),
-      details: error.stack
+      error: error.toString()
     };
   }
 }
