@@ -194,7 +194,7 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
-      <div className="p-4 bg-white border-b border-slate-200">
+      <div className="p-4 bg-white border-b border-slate-200 flex-shrink-0">
         <div className="mb-4">
           <h2 className="text-xl font-bold text-slate-800">{candidate.NOMECOMPLETO || candidate.name}</h2>
           {candidate.NOMESOCIAL && (
@@ -250,10 +250,9 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
         </div>
       </div>
 
-      {/* Área principal de visualização */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4">
         {selectedDocument ? (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden h-full">
+          <div className="bg-white rounded-lg shadow-lg">
             <div className="p-6 border-b border-slate-200">
               <div className="flex items-center gap-3">
                 {selectedDocument.icon}
@@ -265,12 +264,12 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
                 </div>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="space-y-4">
                 {processedFiles.map((file, idx) => {
                   const fileTypeBadge = getFileTypeBadge(file.type);
-                  
+
                   return (
                     <div
                       key={idx}
@@ -289,7 +288,7 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
                               {fileTypeBadge.label}
                             </span>
                           </div>
-                          
+
                           <div className="bg-white p-3 rounded border border-slate-200 mb-3">
                             <a
                               href={file.displayUrl}
@@ -300,7 +299,7 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
                               {file.displayUrl}
                             </a>
                           </div>
-                          
+
                           <div className="flex gap-2 flex-wrap">
                             <a
                               href={file.displayUrl}
@@ -339,7 +338,7 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full bg-white rounded-lg shadow-lg py-12">
+          <div className="flex flex-col items-center justify-center bg-white rounded-lg shadow-lg py-12">
             <FolderOpen className="w-16 h-16 text-slate-300 mb-4" />
             <p className="text-lg font-medium text-slate-500 mb-2">Nenhum documento disponível</p>
             <p className="text-sm text-slate-400">Este candidato não possui documentos cadastrados</p>
