@@ -97,39 +97,24 @@ class GoogleSheetsService {
     }
   }
 
-  async getCandidates(bustCache: boolean = false): Promise<Candidate[]> {
-    console.log('📞 Chamando getCandidates do Google Sheets...', bustCache ? '(forçando atualização)' : '');
-
-    const url = new URL(this.scriptUrl);
-    url.searchParams.append('action', 'getCandidates');
-
-    if (bustCache) {
-      url.searchParams.append('_t', Date.now().toString());
-    }
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      mode: 'cors',
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
+  async getCandidates(): Promise<Candidate[]> {
+    console.log('📞 Chamando getCandidates do Google Sheets...');
+    const result = await this.fetchData('getCandidates');
     console.log('📥 Resultado completo recebido:', result);
+    console.log('📊 result.data:', result.data);
+    console.log('📊 result.data?.candidates:', result.data?.candidates);
 
+    // O Google Apps Script retorna { success: true, data: { candidates: [...] } }
     const candidatesArray = result.data?.candidates || result.candidates || [];
-    console.log('✅ Array de candidatos extraído:', candidatesArray.length);
+    console.log('✅ Array de candidatos extraído:', candidatesArray);
+    console.log('📏 Total de candidatos:', candidatesArray.length);
 
     if (candidatesArray.length > 0) {
       console.log('👤 Exemplo do primeiro candidato:', candidatesArray[0]);
     }
 
     return candidatesArray.map((candidate: any, index: number) => {
+      // Garantir ID único: usar CPF ou gerar um ID baseado no índice
       const candidateId = candidate.CPF || candidate.id || `candidate_${index}_${Date.now()}`;
 
       const normalized: any = {
@@ -141,6 +126,7 @@ class GoogleSheetsService {
         status: (candidate.Status || candidate.status || 'pendente').toLowerCase(),
         Status: candidate.Status || candidate.status || 'pendente',
 
+        // CORREÇÃO: Mapear assigned_to e Analista corretamente
         assigned_to: candidate.assigned_to || candidate.Analista || null,
         Analista: candidate.Analista || candidate.assigned_to || null,
         assigned_at: candidate.assigned_at || null,
@@ -210,55 +196,26 @@ const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
-// ✅ Função utilitária para remover duplicados por CPF
-const removeDuplicates = (candidates: any[]): any[] => {
-  return Array.from(
-    candidates.reduce((map, candidate) => {
-      const cpf = candidate.CPF;
-      if (!cpf) return map;
-
-      const existing = map.get(cpf);
-      if (!existing) {
-        map.set(cpf, candidate);
-      } else {
-        // Manter o candidato com a data de atualização mais recente
-        const existingDate = new Date(existing.updated_at || existing.created_at || 0);
-        const candidateDate = new Date(candidate.updated_at || candidate.created_at || 0);
-
-        if (candidateDate > existingDate) {
-          map.set(cpf, candidate);
-        }
-      }
-      return map;
-    }, new Map<string, any>()).values()
-  );
-};
-
 export const candidateService = {
   async getCandidates(
     page: number = 1,
     pageSize: number = 50,
     filters?: CandidateFilters,
-    userId?: string,
-    bustCache: boolean = false
+    userId?: string
   ): Promise<PaginatedResponse<Candidate>> {
     try {
-      console.log('📊 [CandidateService] Buscando candidatos...', bustCache ? '(forçando atualização)' : '');
+      console.log('📊 [CandidateService] Buscando candidatos...');
       console.log('📊 [CandidateService] UserId:', userId);
       console.log('📊 [CandidateService] Filters:', filters);
 
-      const allData = await sheetsService.getCandidates(bustCache);
+      const allData = await sheetsService.getCandidates();
       console.log('📦 [CandidateService] Total de candidatos carregados:', allData.length);
 
       if (allData.length > 0) {
         console.log('👤 [CandidateService] Exemplo de candidato:', allData[0]);
       }
 
-      // ✅ CORREÇÃO: Remover duplicados por CPF (manter o mais recente)
-      const uniqueData = removeDuplicates(allData);
-      console.log('🧹 [CandidateService] Após remoção de duplicados:', uniqueData.length);
-
-      let filteredData = filterData(uniqueData, filters);
+      let filteredData = filterData(allData, filters);
       console.log('🔍 [CandidateService] Após filtros gerais:', filteredData.length);
 
       // CORREÇÃO: Verificar assigned_to considerando email e ID
@@ -306,8 +263,7 @@ export const candidateService = {
   async getCandidateById(id: string): Promise<Candidate | null> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
-      return uniqueData.find(item => item.id === id || item.CPF === id) || null;
+      return allData.find(item => item.id === id || item.CPF === id) || null;
     } catch (error) {
       console.error('Erro ao buscar candidato por ID:', error);
       throw error;
@@ -317,8 +273,7 @@ export const candidateService = {
   async getCandidateByCPF(cpf: string): Promise<Candidate | null> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
-      return uniqueData.find(item => item.CPF === cpf) || null;
+      return allData.find(item => item.CPF === cpf) || null;
     } catch (error) {
       console.error('Erro ao buscar candidato por CPF:', error);
       throw error;
@@ -334,12 +289,22 @@ export const candidateService = {
       const allData = await sheetsService.getCandidates();
       console.log('📊 [getUnassignedCandidates] Total de candidatos:', allData.length);
 
-      // ✅ CORREÇÃO: Remover duplicados por CPF ANTES de filtrar não alocados
-      const uniqueData = removeDuplicates(allData);
-      console.log('🧹 [getUnassignedCandidates] Após remoção de duplicados:', uniqueData.length);
-
-      const unassignedData = uniqueData.filter(item => !item.assigned_to);
+      const unassignedData = allData.filter(item => !item.assigned_to);
       console.log('📊 [getUnassignedCandidates] Candidatos não alocados:', unassignedData.length);
+
+      // Verificar IDs duplicados
+      const ids = unassignedData.map(c => c.id);
+      const uniqueIds = new Set(ids);
+      console.log('🔍 [getUnassignedCandidates] Total de IDs:', ids.length);
+      console.log('🔍 [getUnassignedCandidates] IDs únicos:', uniqueIds.size);
+
+      if (ids.length !== uniqueIds.size) {
+        console.warn('⚠️ [getUnassignedCandidates] IDs DUPLICADOS DETECTADOS!');
+        console.log('🔍 Primeiros 5 candidatos:');
+        unassignedData.slice(0, 5).forEach((c, i) => {
+          console.log(`  ${i + 1}. ID: ${c.id}, CPF: ${c.CPF}, Nome: ${c.NOMECOMPLETO}`);
+        });
+      }
 
       unassignedData.sort((a, b) => {
         if (a.priority !== b.priority) {
@@ -372,13 +337,10 @@ export const candidateService = {
   async getStatistics(userId?: string) {
     try {
       const allData = await sheetsService.getCandidates();
-
-      // ✅ CORREÇÃO: Remover duplicados por CPF
-      const uniqueData = removeDuplicates(allData);
-      let filteredData = uniqueData;
+      let filteredData = allData;
 
       if (userId) {
-        filteredData = uniqueData.filter(item => {
+        filteredData = allData.filter(item => {
           const assignedTo = (item as any).assigned_to || (item as any).Analista;
           return assignedTo === userId;
         });
@@ -516,8 +478,7 @@ export const candidateService = {
       await sheetsService.updateCandidate(id, fullUpdates);
 
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
-      const updatedCandidate = uniqueData.find(item => item.id === id || item.CPF === id);
+      const updatedCandidate = allData.find(item => item.id === id || item.CPF === id);
 
       if (!updatedCandidate) {
         throw new Error('Candidato não encontrado após atualização');
@@ -542,8 +503,7 @@ export const candidateService = {
   async getAreas(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
-      const uniqueAreas = [...new Set(uniqueData.map(c => c.AREAATUACAO))];
+      const uniqueAreas = [...new Set(allData.map(c => c.AREAATUACAO))];
       return uniqueAreas.filter(area => area && area.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar áreas:', error);
@@ -554,8 +514,7 @@ export const candidateService = {
   async getCargos(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
-      const uniqueCargos = [...new Set(uniqueData.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS].filter(Boolean)))];
+      const uniqueCargos = [...new Set(allData.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS].filter(Boolean)))];
       return uniqueCargos.filter(cargo => cargo && cargo.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar cargos:', error);
@@ -566,8 +525,7 @@ export const candidateService = {
   async getVagaPCDOptions(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
-      const uniqueOptions = [...new Set(uniqueData.map(c => c.VAGAPCD))];
+      const uniqueOptions = [...new Set(allData.map(c => c.VAGAPCD))];
       return uniqueOptions.filter(option => option && option.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar opções PCD:', error);
@@ -578,10 +536,9 @@ export const candidateService = {
   async searchCandidates(query: string): Promise<Candidate[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueData = removeDuplicates(allData);
       const searchTerm = query.toLowerCase();
 
-      return uniqueData.filter(item => {
+      return allData.filter(item => {
         const searchableFields = [
           item.NOMECOMPLETO,
           item.NOMESOCIAL,
