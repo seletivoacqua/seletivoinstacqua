@@ -266,15 +266,13 @@ export const googleSheetsService = {
   },
 
   async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
-    console.log('🔄 saveScreening - Invalidando cache antes de salvar');
-
-    cacheService.invalidatePattern(/getCandidates/);
-    cacheService.invalidatePattern(/getCandidatesByStatus/);
-    cacheService.invalidatePattern(/getReportStats/);
-
     const result = await makeRequest('saveScreening', screeningData, { cache: false, deduplicate: false });
 
-    console.log('📊 saveScreening - Resultado:', result);
+    if (result.success) {
+      cacheService.invalidatePattern(/getCandidates/);
+      cacheService.invalidatePattern(/getCandidatesByStatus/);
+      cacheService.invalidatePattern(/getReportStats/);
+    }
 
     return result;
   },
