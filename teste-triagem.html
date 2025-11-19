@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Triagem - Google Apps Script</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4285f4;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 5px;
+            margin: 5px 0;
+            border-left: 3px solid #4285f4;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de Triagem - Google Apps Script</h1>
+
+        <div class="form-group">
+            <label>URL do Script:</label>
+            <input type="text" id="scriptUrl" value="https://script.google.com/macros/s/AKfycbxfl0gWq3-dnZmYcz5AIHkpOyC1XdRb8QdaMRQTQZnn5sqyQZvV3qhCevhXuFHGYBk0/exec">
+        </div>
+
+        <div class="form-group">
+            <label>CPF do Candidato:</label>
+            <input type="text" id="cpf" placeholder="Digite o CPF">
+        </div>
+
+        <div class="form-group">
+            <label>Status:</label>
+            <select id="status">
+                <option value="classificado">Classificado</option>
+                <option value="desclassificado">Desclassificado</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Email do Analista:</label>
+            <input type="email" id="analystEmail" value="teste@email.com">
+        </div>
+
+        <div class="form-group">
+            <label>RG/CPF:</label>
+            <select id="checkrg-cpf">
+                <option value="conforme">Conforme</option>
+                <option value="nao_conforme">Não Conforme</option>
+                <option value="nao_se_aplica">Não se Aplica</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>CNH:</label>
+            <select id="check-cnh">
+                <option value="conforme">Conforme</option>
+                <option value="nao_conforme">Não Conforme</option>
+                <option value="nao_se_aplica">Não se Aplica</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Experiência:</label>
+            <select id="check-experiencia">
+                <option value="conforme">Conforme</option>
+                <option value="nao_conforme">Não Conforme</option>
+                <option value="nao_se_aplica">Não se Aplica</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Observações:</label>
+            <textarea id="notes" rows="3" placeholder="Observações sobre a triagem"></textarea>
+        </div>
+
+        <button onclick="testarTriagem()" id="btnTest">🚀 Testar Triagem</button>
+        <button onclick="limparLogs()" style="background: #dc3545;">🗑️ Limpar Logs</button>
+
+        <div id="result"></div>
+
+        <div class="log" id="logContainer">
+            <h3>📋 Logs</h3>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.borderLeftColor = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#4285f4';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function limparLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('result').style.display = 'none';
+        }
+
+        async function testarTriagem() {
+            const btn = document.getElementById('btnTest');
+            btn.disabled = true;
+            btn.textContent = '⏳ Testando...';
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'none';
+
+            try {
+                addLog('═══════════════════════════════════════');
+                addLog('🚀 INICIANDO TESTE DE TRIAGEM');
+                addLog('═══════════════════════════════════════');
+
+                const scriptUrl = document.getElementById('scriptUrl').value;
+                const cpf = document.getElementById('cpf').value;
+                const status = document.getElementById('status').value;
+                const analystEmail = document.getElementById('analystEmail').value;
+
+                if (!cpf) {
+                    throw new Error('CPF é obrigatório');
+                }
+
+                const screeningData = {
+                    action: 'saveScreening',
+                    candidateId: cpf,
+                    registrationNumber: cpf,
+                    cpf: cpf,
+                    status: status,
+                    analystEmail: analystEmail,
+                    screenedAt: new Date().toISOString(),
+                    notes: document.getElementById('notes').value,
+                    'checkrg-cpf': document.getElementById('checkrg-cpf').value,
+                    'check-cnh': document.getElementById('check-cnh').value,
+                    'check-experiencia': document.getElementById('check-experiencia').value,
+                    'check-regularidade': 'nao_se_aplica',
+                    'check-laudo': 'nao_se_aplica',
+                    'check-curriculo': 'conforme'
+                };
+
+                addLog('📦 Dados preparados:', 'info');
+                addLog(JSON.stringify(screeningData, null, 2), 'info');
+
+                addLog('📤 Enviando requisição POST...', 'info');
+
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(screeningData)
+                });
+
+                addLog(`📡 Status HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog(`❌ Erro HTTP: ${errorText}`, 'error');
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+
+                addLog('📥 Resposta recebida:', 'success');
+                addLog(JSON.stringify(result, null, 2), 'success');
+
+                resultDiv.className = result.success ? 'success' : 'error';
+                resultDiv.style.display = 'block';
+
+                if (result.success) {
+                    addLog('✅ TRIAGEM SALVA COM SUCESSO!', 'success');
+                    resultDiv.innerHTML = `
+                        <h3>✅ Sucesso!</h3>
+                        <p><strong>Status:</strong> ${result.data?.status || status}</p>
+                        <p><strong>Candidato:</strong> ${cpf}</p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                } else {
+                    addLog('❌ ERRO AO SALVAR TRIAGEM', 'error');
+                    addLog(`Erro: ${result.error}`, 'error');
+                    resultDiv.innerHTML = `
+                        <h3>❌ Erro</h3>
+                        <p><strong>Mensagem:</strong> ${result.error || 'Erro desconhecido'}</p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                }
+
+            } catch (error) {
+                addLog('═══════════════════════════════════════', 'error');
+                addLog('❌ ERRO CRÍTICO', 'error');
+                addLog(error.message, 'error');
+                if (error.stack) {
+                    addLog(error.stack, 'error');
+                }
+                addLog('═══════════════════════════════════════', 'error');
+
+                resultDiv.className = 'error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h3>❌ Erro Crítico</h3>
+                    <p>${error.message}</p>
+                    <pre>${error.stack || ''}</pre>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Testar Triagem';
+                addLog('═══════════════════════════════════════');
+                addLog('🏁 TESTE FINALIZADO');
+                addLog('═══════════════════════════════════════');
+            }
+        }
+    </script>
+</body>
+</html>
