@@ -41,7 +41,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
       setLoading(true);
       console.log('🔄 Carregando candidatos para analista:', user.id);
 
-      const response = await candidateService.getCandidates(1, 500, {
+      const response = await candidateService.getCandidates(1, 10000, {
         assignedTo: user.id,
       });
 
