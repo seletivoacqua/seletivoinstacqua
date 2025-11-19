@@ -10,11 +10,14 @@ export function parseFileUrls(urlString?: string): string[] {
 
   const trimmed = urlString.trim();
 
-  const urlPattern = /(https?:\/\/[^\s,;]+)/g;
+  // Padrão mais robusto que captura URLs completas
+  // Captura até espaços, vírgulas, ponto-e-vírgula, quebras de linha, ou parênteses
+  const urlPattern = /(https?:\/\/[^\s,;\n\r)]+)/gi;
   const matches = trimmed.match(urlPattern);
 
   if (matches && matches.length > 0) {
-    return matches.map(url => url.trim());
+    // Remove caracteres indesejados no final de cada URL
+    return matches.map(url => url.trim().replace(/[,;)\]]+$/, ''));
   }
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {

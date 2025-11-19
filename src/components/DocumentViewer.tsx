@@ -149,6 +149,18 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
   const selectedDocument = availableDocs.find(d => d.key === selectedDoc);
   const processedFiles = selectedDocument?.url ? processMultipleUrls(selectedDocument.url) : [];
 
+  // Debug: Log para verificar URLs processadas
+  useEffect(() => {
+    if (selectedDocument) {
+      console.log('📄 Documento selecionado:', selectedDocument.label);
+      console.log('📄 URL bruta:', selectedDocument.url);
+      console.log('📄 Arquivos processados:', processedFiles.length);
+      processedFiles.forEach((file, idx) => {
+        console.log(`  ${idx + 1}. Tipo: ${file.type}, URL: ${file.displayUrl}`);
+      });
+    }
+  }, [selectedDoc, selectedDocument]);
+
   // Função para obter ícone baseado no tipo de arquivo
   const getFileIcon = (fileType: string) => {
     switch (fileType) {
@@ -244,13 +256,15 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
       <div className="flex-1 overflow-y-auto p-4">
         {selectedDocument ? (
           <div className="bg-white rounded-lg shadow-lg">
-            <div className="p-6 border-b border-slate-200">
+            <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-slate-50">
               <div className="flex items-center gap-3">
                 {selectedDocument.icon}
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800">{selectedDocument.label}</h3>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {processedFiles.length} arquivo(s) encontrado(s)
+                  <h3 className="text-lg font-bold text-slate-800">{selectedDocument.label}</h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {processedFiles.length > 0
+                      ? `${processedFiles.length} arquivo(s) encontrado(s)`
+                      : 'Nenhum arquivo encontrado'}
                   </p>
                 </div>
               </div>
