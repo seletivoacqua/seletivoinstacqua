@@ -207,30 +207,38 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="p-3 bg-white border-b border-slate-200 flex-shrink-0">
-        <div className="mb-2">
+        <div className="mb-3">
           <h2 className="text-lg font-bold text-slate-800">{candidate.NOMECOMPLETO || candidate.name}</h2>
           {candidate.NOMESOCIAL && (
             <p className="text-xs text-slate-600 mt-0.5">Nome Social: {candidate.NOMESOCIAL}</p>
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-2 p-2 bg-slate-50 rounded text-xs">
+        <div className="grid grid-cols-2 gap-3 mb-3 p-2.5 bg-slate-50 rounded text-xs">
           <div>
-            <p className="text-slate-500 uppercase font-semibold">CPF</p>
+            <p className="text-slate-500 uppercase font-semibold mb-0.5">Inscrição</p>
+            <p className="text-slate-800 font-medium">{candidate.registration_number}</p>
+          </div>
+          <div>
+            <p className="text-slate-500 uppercase font-semibold mb-0.5">CPF</p>
             <p className="text-slate-800 font-medium">{candidate.CPF}</p>
           </div>
           <div>
-            <p className="text-slate-500 uppercase font-semibold">Área</p>
+            <p className="text-slate-500 uppercase font-semibold mb-0.5">Área de Atuação</p>
             <p className="text-slate-800 font-medium">{candidate.AREAATUACAO}</p>
           </div>
           <div>
-            <p className="text-slate-500 uppercase font-semibold">PCD</p>
+            <p className="text-slate-500 uppercase font-semibold mb-0.5">Vaga PCD</p>
             <p className="text-slate-800 font-medium">{candidate.VAGAPCD || 'Não'}</p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-slate-500 uppercase font-semibold mb-0.5">Cargos</p>
+            <p className="text-slate-800 font-medium">{renderCargos()}</p>
           </div>
         </div>
 
         <div className="mb-2">
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-slate-600 font-medium">
             {availableDocs.length} documento(s) disponível(s)
           </p>
         </div>
