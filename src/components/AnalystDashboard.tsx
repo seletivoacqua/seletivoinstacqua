@@ -35,16 +35,16 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     }
   }, [user]);
 
-  async function loadCandidates(bustCache: boolean = false) {
+  async function loadCandidates() {
     if (!user) return;
 
     try {
       setLoading(true);
-      console.log('🔄 Carregando candidatos para analista:', user.id, bustCache ? '(forçando atualização)' : '');
+      console.log('🔄 Carregando candidatos para analista:', user.id);
 
       const response = await candidateService.getCandidates(1, 10000, {
         assignedTo: user.id,
-      }, undefined, bustCache);
+      });
 
       console.log('📊 Candidatos carregados:', response.data);
       setCandidates(response.data);
@@ -74,7 +74,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
   async function handleScreeningComplete() {
     try {
       console.log('🔄 Recarregando dados após triagem...');
-      await loadCandidates(true);
+      await loadCandidates();
       await loadStats();
 
       if (onCandidateTriaged) {
