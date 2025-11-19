@@ -196,6 +196,30 @@ const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
 
+// ✅ Função utilitária para remover duplicados por CPF
+const removeDuplicates = (candidates: any[]): any[] => {
+  return Array.from(
+    candidates.reduce((map, candidate) => {
+      const cpf = candidate.CPF;
+      if (!cpf) return map;
+
+      const existing = map.get(cpf);
+      if (!existing) {
+        map.set(cpf, candidate);
+      } else {
+        // Manter o candidato com a data de atualização mais recente
+        const existingDate = new Date(existing.updated_at || existing.created_at || 0);
+        const candidateDate = new Date(candidate.updated_at || candidate.created_at || 0);
+
+        if (candidateDate > existingDate) {
+          map.set(cpf, candidate);
+        }
+      }
+      return map;
+    }, new Map<string, any>()).values()
+  );
+};
+
 export const candidateService = {
   async getCandidates(
     page: number = 1,
@@ -215,7 +239,11 @@ export const candidateService = {
         console.log('👤 [CandidateService] Exemplo de candidato:', allData[0]);
       }
 
-      let filteredData = filterData(allData, filters);
+      // ✅ CORREÇÃO: Remover duplicados por CPF (manter o mais recente)
+      const uniqueData = removeDuplicates(allData);
+      console.log('🧹 [CandidateService] Após remoção de duplicados:', uniqueData.length);
+
+      let filteredData = filterData(uniqueData, filters);
       console.log('🔍 [CandidateService] Após filtros gerais:', filteredData.length);
 
       // CORREÇÃO: Verificar assigned_to considerando email e ID
@@ -263,7 +291,8 @@ export const candidateService = {
   async getCandidateById(id: string): Promise<Candidate | null> {
     try {
       const allData = await sheetsService.getCandidates();
-      return allData.find(item => item.id === id || item.CPF === id) || null;
+      const uniqueData = removeDuplicates(allData);
+      return uniqueData.find(item => item.id === id || item.CPF === id) || null;
     } catch (error) {
       console.error('Erro ao buscar candidato por ID:', error);
       throw error;
@@ -273,7 +302,8 @@ export const candidateService = {
   async getCandidateByCPF(cpf: string): Promise<Candidate | null> {
     try {
       const allData = await sheetsService.getCandidates();
-      return allData.find(item => item.CPF === cpf) || null;
+      const uniqueData = removeDuplicates(allData);
+      return uniqueData.find(item => item.CPF === cpf) || null;
     } catch (error) {
       console.error('Erro ao buscar candidato por CPF:', error);
       throw error;
@@ -289,22 +319,12 @@ export const candidateService = {
       const allData = await sheetsService.getCandidates();
       console.log('📊 [getUnassignedCandidates] Total de candidatos:', allData.length);
 
-      const unassignedData = allData.filter(item => !item.assigned_to);
+      // ✅ CORREÇÃO: Remover duplicados por CPF ANTES de filtrar não alocados
+      const uniqueData = removeDuplicates(allData);
+      console.log('🧹 [getUnassignedCandidates] Após remoção de duplicados:', uniqueData.length);
+
+      const unassignedData = uniqueData.filter(item => !item.assigned_to);
       console.log('📊 [getUnassignedCandidates] Candidatos não alocados:', unassignedData.length);
-
-      // Verificar IDs duplicados
-      const ids = unassignedData.map(c => c.id);
-      const uniqueIds = new Set(ids);
-      console.log('🔍 [getUnassignedCandidates] Total de IDs:', ids.length);
-      console.log('🔍 [getUnassignedCandidates] IDs únicos:', uniqueIds.size);
-
-      if (ids.length !== uniqueIds.size) {
-        console.warn('⚠️ [getUnassignedCandidates] IDs DUPLICADOS DETECTADOS!');
-        console.log('🔍 Primeiros 5 candidatos:');
-        unassignedData.slice(0, 5).forEach((c, i) => {
-          console.log(`  ${i + 1}. ID: ${c.id}, CPF: ${c.CPF}, Nome: ${c.NOMECOMPLETO}`);
-        });
-      }
 
       unassignedData.sort((a, b) => {
         if (a.priority !== b.priority) {
@@ -337,10 +357,13 @@ export const candidateService = {
   async getStatistics(userId?: string) {
     try {
       const allData = await sheetsService.getCandidates();
-      let filteredData = allData;
+
+      // ✅ CORREÇÃO: Remover duplicados por CPF
+      const uniqueData = removeDuplicates(allData);
+      let filteredData = uniqueData;
 
       if (userId) {
-        filteredData = allData.filter(item => {
+        filteredData = uniqueData.filter(item => {
           const assignedTo = (item as any).assigned_to || (item as any).Analista;
           return assignedTo === userId;
         });
@@ -478,7 +501,8 @@ export const candidateService = {
       await sheetsService.updateCandidate(id, fullUpdates);
 
       const allData = await sheetsService.getCandidates();
-      const updatedCandidate = allData.find(item => item.id === id || item.CPF === id);
+      const uniqueData = removeDuplicates(allData);
+      const updatedCandidate = uniqueData.find(item => item.id === id || item.CPF === id);
 
       if (!updatedCandidate) {
         throw new Error('Candidato não encontrado após atualização');
@@ -503,7 +527,8 @@ export const candidateService = {
   async getAreas(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueAreas = [...new Set(allData.map(c => c.AREAATUACAO))];
+      const uniqueData = removeDuplicates(allData);
+      const uniqueAreas = [...new Set(uniqueData.map(c => c.AREAATUACAO))];
       return uniqueAreas.filter(area => area && area.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar áreas:', error);
@@ -514,7 +539,8 @@ export const candidateService = {
   async getCargos(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueCargos = [...new Set(allData.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS].filter(Boolean)))];
+      const uniqueData = removeDuplicates(allData);
+      const uniqueCargos = [...new Set(uniqueData.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS].filter(Boolean)))];
       return uniqueCargos.filter(cargo => cargo && cargo.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar cargos:', error);
@@ -525,7 +551,8 @@ export const candidateService = {
   async getVagaPCDOptions(): Promise<string[]> {
     try {
       const allData = await sheetsService.getCandidates();
-      const uniqueOptions = [...new Set(allData.map(c => c.VAGAPCD))];
+      const uniqueData = removeDuplicates(allData);
+      const uniqueOptions = [...new Set(uniqueData.map(c => c.VAGAPCD))];
       return uniqueOptions.filter(option => option && option.trim() !== '');
     } catch (error) {
       console.error('Erro ao buscar opções PCD:', error);
@@ -536,9 +563,10 @@ export const candidateService = {
   async searchCandidates(query: string): Promise<Candidate[]> {
     try {
       const allData = await sheetsService.getCandidates();
+      const uniqueData = removeDuplicates(allData);
       const searchTerm = query.toLowerCase();
 
-      return allData.filter(item => {
+      return uniqueData.filter(item => {
         const searchableFields = [
           item.NOMECOMPLETO,
           item.NOMESOCIAL,
