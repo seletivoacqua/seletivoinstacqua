@@ -422,48 +422,74 @@ function getAnalysts(params) {
 // ============================================
 
 function getCandidates(params) {
-  const sh = _sheet(SHEET_CANDIDATOS);
-  if (!sh) return { candidates: [] };
+  try {
+    Logger.log('🔵 getCandidates INICIADO');
+    Logger.log('🔵 Parâmetros recebidos: ' + JSON.stringify(params));
 
-  const headers = _getHeaders_(sh);
-  const lastRow = sh.getLastRow();
-  const lastCol = sh.getLastColumn();
-
-  if (lastRow <= HEADER_ROWS || lastCol === 0) {
-    return { candidates: [] };
-  }
-
-  const maxRows = params && params.limit ? parseInt(params.limit) : 1000;
-  const startRow = params && params.offset ? parseInt(params.offset) : 0;
-
-  const totalDataRows = lastRow - HEADER_ROWS;
-  const readStartRow = HEADER_ROWS + 1 + startRow;
-  const readCount = Math.min(maxRows, totalDataRows - startRow);
-
-  if (readCount <= 0) {
-    return { candidates: [], total: totalDataRows };
-  }
-
-  Logger.log('📊 getCandidates - Total de linhas: ' + totalDataRows);
-  Logger.log('📊 getCandidates - Lendo de ' + readStartRow + ' até ' + (readStartRow + readCount - 1));
-
-  const values = sh.getRange(readStartRow, 1, readCount, lastCol).getValues();
-
-  const out = values.map(row => {
-    const obj = {};
-    for (let j = 0; j < headers.length; j++) {
-      obj[headers[j]] = row[j];
+    const sh = _sheet(SHEET_CANDIDATOS);
+    if (!sh) {
+      Logger.log('❌ Sheet CANDIDATOS não encontrada');
+      return { candidates: [] };
     }
-    return obj;
-  });
+    Logger.log('✅ Sheet encontrada');
 
-  return {
-    candidates: out,
-    total: totalDataRows,
-    offset: startRow,
-    limit: maxRows,
-    returned: out.length
-  };
+    const headers = _getHeaders_(sh);
+    Logger.log('✅ Headers carregados: ' + headers.length + ' colunas');
+
+    const lastRow = sh.getLastRow();
+    const lastCol = sh.getLastColumn();
+    Logger.log('📊 LastRow: ' + lastRow + ', LastCol: ' + lastCol + ', HEADER_ROWS: ' + HEADER_ROWS);
+
+    if (lastRow <= HEADER_ROWS || lastCol === 0) {
+      Logger.log('⚠️ Planilha vazia ou sem dados após header');
+      return { candidates: [] };
+    }
+
+    const maxRows = params && params.limit ? parseInt(params.limit, 10) : 1000;
+    const startRow = params && params.offset ? parseInt(params.offset, 10) : 0;
+    Logger.log('📊 maxRows: ' + maxRows + ', startRow: ' + startRow);
+
+    const totalDataRows = lastRow - HEADER_ROWS;
+    const readStartRow = HEADER_ROWS + 1 + startRow;
+    const readCount = Math.min(maxRows, totalDataRows - startRow);
+
+    Logger.log('📊 Total de linhas na planilha: ' + totalDataRows);
+    Logger.log('📊 Linha inicial de leitura: ' + readStartRow);
+    Logger.log('📊 Quantidade a ler: ' + readCount);
+
+    if (readCount <= 0) {
+      Logger.log('⚠️ readCount <= 0, nenhuma linha para ler');
+      return { candidates: [], total: totalDataRows };
+    }
+
+    Logger.log('🔄 Executando getRange(' + readStartRow + ', 1, ' + readCount + ', ' + lastCol + ')');
+    const values = sh.getRange(readStartRow, 1, readCount, lastCol).getValues();
+    Logger.log('✅ getRange concluído - ' + values.length + ' linhas retornadas');
+
+    const out = values.map(row => {
+      const obj = {};
+      for (let j = 0; j < headers.length; j++) {
+        obj[headers[j]] = row[j];
+      }
+      return obj;
+    });
+
+    Logger.log('✅ getCandidates CONCLUÍDO');
+    Logger.log('✅ Retornando ' + out.length + ' candidatos');
+
+    return {
+      candidates: out,
+      total: totalDataRows,
+      offset: startRow,
+      limit: maxRows,
+      returned: out.length
+    };
+  } catch (error) {
+    Logger.log('❌❌❌ ERRO CRÍTICO em getCandidates ❌❌❌');
+    Logger.log('❌ Erro: ' + error.toString());
+    Logger.log('❌ Stack: ' + error.stack);
+    return { candidates: [], error: error.toString() };
+  }
 }
 
 function updateCandidateStatus(params) {
