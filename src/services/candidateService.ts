@@ -97,14 +97,17 @@ class GoogleSheetsService {
     }
   }
 
-  async getCandidates(): Promise<Candidate[]> {
+  async getCandidates(offset: number = 0, limit: number = 1000): Promise<Candidate[]> {
     console.log('📞 Chamando getCandidates do Google Sheets...');
-    const result = await this.fetchData('getCandidates');
+    console.log('📊 Parâmetros - Offset:', offset, 'Limit:', limit);
+
+    const result = await this.fetchData('getCandidates', { offset, limit });
     console.log('📥 Resultado completo recebido:', result);
     console.log('📊 result.data:', result.data);
     console.log('📊 result.data?.candidates:', result.data?.candidates);
+    console.log('📊 Total na planilha:', result.data?.total);
+    console.log('📊 Retornados:', result.data?.returned);
 
-    // O Google Apps Script retorna { success: true, data: { candidates: [...] } }
     const candidatesArray = result.data?.candidates || result.candidates || [];
     console.log('✅ Array de candidatos extraído:', candidatesArray);
     console.log('📏 Total de candidatos:', candidatesArray.length);
@@ -114,7 +117,6 @@ class GoogleSheetsService {
     }
 
     return candidatesArray.map((candidate: any, index: number) => {
-      // Garantir ID único: usar CPF ou gerar um ID baseado no índice
       const candidateId = candidate.CPF || candidate.id || `candidate_${index}_${Date.now()}`;
 
       const normalized: any = {
@@ -126,7 +128,6 @@ class GoogleSheetsService {
         status: (candidate.Status || candidate.status || 'pendente').toLowerCase(),
         Status: candidate.Status || candidate.status || 'pendente',
 
-        // CORREÇÃO: Mapear assigned_to e Analista corretamente
         assigned_to: candidate.assigned_to || candidate.Analista || null,
         Analista: candidate.Analista || candidate.assigned_to || null,
         assigned_at: candidate.assigned_at || null,
@@ -208,7 +209,7 @@ export const candidateService = {
       console.log('📊 [CandidateService] UserId:', userId);
       console.log('📊 [CandidateService] Filters:', filters);
 
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       console.log('📦 [CandidateService] Total de candidatos carregados:', allData.length);
 
       if (allData.length > 0) {
@@ -262,7 +263,7 @@ export const candidateService = {
 
   async getCandidateById(id: string): Promise<Candidate | null> {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       return allData.find(item => item.id === id || item.CPF === id) || null;
     } catch (error) {
       console.error('Erro ao buscar candidato por ID:', error);
@@ -272,7 +273,7 @@ export const candidateService = {
 
   async getCandidateByCPF(cpf: string): Promise<Candidate | null> {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       return allData.find(item => item.CPF === cpf) || null;
     } catch (error) {
       console.error('Erro ao buscar candidato por CPF:', error);
@@ -286,7 +287,7 @@ export const candidateService = {
   ): Promise<PaginatedResponse<Candidate>> {
     try {
       console.log('🔍 [getUnassignedCandidates] Iniciando busca...');
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       console.log('📊 [getUnassignedCandidates] Total de candidatos:', allData.length);
 
       const unassignedData = allData.filter(item => !item.assigned_to);
@@ -336,7 +337,7 @@ export const candidateService = {
 
   async getStatistics(userId?: string) {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       let filteredData = allData;
 
       if (userId) {
@@ -477,7 +478,7 @@ export const candidateService = {
 
       await sheetsService.updateCandidate(id, fullUpdates);
 
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       const updatedCandidate = allData.find(item => item.id === id || item.CPF === id);
 
       if (!updatedCandidate) {
@@ -502,7 +503,7 @@ export const candidateService = {
 
   async getAreas(): Promise<string[]> {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       const uniqueAreas = [...new Set(allData.map(c => c.AREAATUACAO))];
       return uniqueAreas.filter(area => area && area.trim() !== '');
     } catch (error) {
@@ -513,7 +514,7 @@ export const candidateService = {
 
   async getCargos(): Promise<string[]> {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       const uniqueCargos = [...new Set(allData.flatMap(c => [c.CARGOADMIN, c.CARGOASSIS].filter(Boolean)))];
       return uniqueCargos.filter(cargo => cargo && cargo.trim() !== '');
     } catch (error) {
@@ -524,7 +525,7 @@ export const candidateService = {
 
   async getVagaPCDOptions(): Promise<string[]> {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       const uniqueOptions = [...new Set(allData.map(c => c.VAGAPCD))];
       return uniqueOptions.filter(option => option && option.trim() !== '');
     } catch (error) {
@@ -535,7 +536,7 @@ export const candidateService = {
 
   async searchCandidates(query: string): Promise<Candidate[]> {
     try {
-      const allData = await sheetsService.getCandidates();
+      const allData = await sheetsService.getCandidates(0, 5000);
       const searchTerm = query.toLowerCase();
 
       return allData.filter(item => {

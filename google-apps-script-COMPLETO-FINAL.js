@@ -422,15 +422,48 @@ function getAnalysts(params) {
 // ============================================
 
 function getCandidates(params) {
-  const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
-  if (!sheet || !values.length) return { candidates: [] };
+  const sh = _sheet(SHEET_CANDIDATOS);
+  if (!sh) return { candidates: [] };
+
+  const headers = _getHeaders_(sh);
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+
+  if (lastRow <= HEADER_ROWS || lastCol === 0) {
+    return { candidates: [] };
+  }
+
+  const maxRows = params && params.limit ? parseInt(params.limit) : 1000;
+  const startRow = params && params.offset ? parseInt(params.offset) : 0;
+
+  const totalDataRows = lastRow - HEADER_ROWS;
+  const readStartRow = HEADER_ROWS + 1 + startRow;
+  const readCount = Math.min(maxRows, totalDataRows - startRow);
+
+  if (readCount <= 0) {
+    return { candidates: [], total: totalDataRows };
+  }
+
+  Logger.log('📊 getCandidates - Total de linhas: ' + totalDataRows);
+  Logger.log('📊 getCandidates - Lendo de ' + readStartRow + ' até ' + (readStartRow + readCount - 1));
+
+  const values = sh.getRange(readStartRow, 1, readCount, lastCol).getValues();
 
   const out = values.map(row => {
     const obj = {};
-    for (let j = 0; j < headers.length; j++) obj[headers[j]] = row[j];
+    for (let j = 0; j < headers.length; j++) {
+      obj[headers[j]] = row[j];
+    }
     return obj;
   });
-  return { candidates: out };
+
+  return {
+    candidates: out,
+    total: totalDataRows,
+    offset: startRow,
+    limit: maxRows,
+    returned: out.length
+  };
 }
 
 function updateCandidateStatus(params) {
