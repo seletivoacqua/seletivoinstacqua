@@ -48,6 +48,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
       const { googleSheetsService } = await import('../services/googleSheets');
 
+      // Carregar analistas e entrevistadores
       const [analystsResult, interviewersResult] = await Promise.all([
         googleSheetsService.getAnalysts(),
         googleSheetsService.getInterviewers()
@@ -56,7 +57,9 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       console.log('📊 Resultado analistas:', analystsResult);
       console.log('🎤 Resultado entrevistadores:', interviewersResult);
 
+      // Processar analistas
       if (analystsResult.success && analystsResult.data) {
+        // Verificar se os dados estão em data.analysts ou diretamente em data
         const analystsArray = analystsResult.data.analysts ||
                              (Array.isArray(analystsResult.data) ? analystsResult.data : []);
 
@@ -73,7 +76,9 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         setAnalysts([]);
       }
 
+      // Processar entrevistadores
       if (interviewersResult.success && interviewersResult.data) {
+        // Verificar se os dados estão em data.interviewers ou diretamente em data
         const interviewersArray = interviewersResult.data.interviewers ||
                                  (Array.isArray(interviewersResult.data) ? interviewersResult.data : []);
 
@@ -96,7 +101,6 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       setInterviewers([]);
     }
   }
-
   async function loadStats() {
     try {
       console.log('📊 Carregando estatísticas...');
@@ -480,28 +484,16 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
           <div className="flex-1 flex items-center gap-4 flex-wrap">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Triagem</label>
+              <label className="block text-xs text-gray-600 mb-1">Tipo de Relatório</label>
               <select
-                value={reportType.startsWith('entrevista_') ? '' : reportType}
-                onChange={(e) => e.target.value && setReportType(e.target.value as ReportType)}
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value as ReportType)}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Selecione...</option>
-                <option value="classificados">Classificados</option>
-                <option value="desclassificados">Desclassificados</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Entrevista</label>
-              <select
-                value={reportType.startsWith('entrevista_') ? reportType : ''}
-                onChange={(e) => e.target.value && setReportType(e.target.value as ReportType)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Selecione...</option>
-                <option value="entrevista_classificados">Classificados</option>
-                <option value="entrevista_desclassificados">Desclassificados</option>
+                <option value="classificados">Classificados - Triagem</option>
+                <option value="desclassificados">Desclassificados - Triagem</option>
+                <option value="entrevista_classificados">Classificados - Entrevista</option>
+                <option value="entrevista_desclassificados">Desclassificados - Entrevista</option>
               </select>
             </div>
 
@@ -738,3 +730,4 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     </div>
   );
 }
+
