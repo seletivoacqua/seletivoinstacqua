@@ -484,16 +484,28 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
           <div className="flex-1 flex items-center gap-4 flex-wrap">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Tipo de Relatório</label>
+              <label className="block text-xs text-gray-600 mb-1">Triagem</label>
               <select
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value as ReportType)}
+                value={reportType.startsWith('entrevista_') ? '' : reportType}
+                onChange={(e) => e.target.value && setReportType(e.target.value as ReportType)}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="classificados">Classificados - Triagem</option>
-                <option value="desclassificados">Desclassificados - Triagem</option>
-                <option value="entrevista_classificados">Classificados - Entrevista</option>
-                <option value="entrevista_desclassificados">Desclassificados - Entrevista</option>
+                <option value="">Selecione...</option>
+                <option value="classificados">Classificados</option>
+                <option value="desclassificados">Desclassificados</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Entrevista</label>
+              <select
+                value={reportType.startsWith('entrevista_') ? reportType : ''}
+                onChange={(e) => e.target.value && setReportType(e.target.value as ReportType)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Selecione...</option>
+                <option value="entrevista_classificados">Classificados</option>
+                <option value="entrevista_desclassificados">Desclassificados</option>
               </select>
             </div>
 
