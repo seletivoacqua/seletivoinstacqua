@@ -115,7 +115,16 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       console.log('📦 Resultado candidatos:', result);
 
       if (result.success && result.data) {
-        const data = Array.isArray(result.data) ? result.data : [];
+        let data = [];
+
+        if (Array.isArray(result.data)) {
+          data = result.data;
+        } else if (result.data.candidates && Array.isArray(result.data.candidates)) {
+          data = result.data.candidates;
+        } else if (typeof result.data === 'object') {
+          data = Object.values(result.data);
+        }
+
         setAllCandidates(data);
         console.log('✅ Candidatos carregados:', data.length);
         calculateStats(data);
