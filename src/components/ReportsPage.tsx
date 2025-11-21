@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck, Search, X } from 'lucide-react';
+import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck, Search } from 'lucide-react';
 import type { Candidate } from '../types/candidate';
 
 interface ReportsPageProps {
   onClose: () => void;
 }
+
+type ReportType = 'classificados' | 'desclassificados' | 'entrevista_classificados' | 'entrevista_desclassificados';
 
 interface Analyst {
   id: string;
@@ -13,40 +15,32 @@ interface Analyst {
   role: string;
 }
 
-interface Filters {
-  statusTriagem: 'todos' | 'classificados' | 'desclassificados';
-  statusEntrevista: 'todos' | 'classificados' | 'desclassificados';
-  analista: string;
-  entrevistador: string;
-  pcd: 'todos' | 'sim' | 'nao';
-}
-
 export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [loading, setLoading] = useState(false);
-  const [allCandidates, setAllCandidates] = useState<Candidate[]>([]);
   const [analysts, setAnalysts] = useState<Analyst[]>([]);
   const [interviewers, setInterviewers] = useState<Analyst[]>([]);
+  const [selectedAnalyst, setSelectedAnalyst] = useState<string>('todos');
+  const [selectedInterviewer, setSelectedInterviewer] = useState<string>('todos');
+  const [reportType, setReportType] = useState<ReportType>('classificados');
+  const [reportData, setReportData] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filters, setFilters] = useState<Filters>({
-    statusTriagem: 'todos',
-    statusEntrevista: 'todos',
-    analista: 'todos',
-    entrevistador: 'todos',
-    pcd: 'todos'
-  });
   const [stats, setStats] = useState({
-    total: 0,
-    classificadosTriagem: 0,
-    desclassificadosTriagem: 0,
-    classificadosEntrevista: 0,
-    desclassificadosEntrevista: 0,
-    pcd: 0
+    classificados: 0,
+    desclassificados: 0,
+    entrevistaClassificados: 0,
+    entrevistaDesclassificados: 0
   });
 
   useEffect(() => {
     loadAnalystsAndInterviewers();
-    loadAllCandidates();
+    loadStats();
   }, []);
+
+  useEffect(() => {
+    if (reportType) {
+      loadReport();
+    }
+  }, [reportType, selectedAnalyst, selectedInterviewer]);
 
   async function loadAnalystsAndInterviewers() {
     try {
@@ -103,76 +97,73 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }
 
-  async function loadAllCandidates() {
+  async function loadStats() {
     try {
-      setLoading(true);
-      console.log('📋 Carregando todos os candidatos...');
-
+      console.log('📊 Carregando estatísticas...');
       const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getReportStats();
 
-      const result = await googleSheetsService.getCandidates();
-
-      console.log('📦 Resultado candidatos:', result);
+      console.log('📈 Resultado estatísticas:', result);
 
       if (result.success && result.data) {
-        let data = [];
-
-        if (Array.isArray(result.data)) {
-          data = result.data;
-        } else if (result.data.candidates && Array.isArray(result.data.candidates)) {
-          data = result.data.candidates;
-        } else if (typeof result.data === 'object') {
-          data = Object.values(result.data);
-        }
-
-        setAllCandidates(data);
-        console.log('✅ Candidatos carregados:', data.length);
-        calculateStats(data);
+        setStats(result.data);
+        console.log('✅ Estatísticas carregadas:', result.data);
       } else {
-        console.error('❌ Falha ao carregar candidatos:', result);
-        setAllCandidates([]);
+        console.error('❌ Falha ao carregar estatísticas:', result);
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar candidatos:', error);
-      setAllCandidates([]);
-    } finally {
-      setLoading(false);
+      console.error('❌ Erro ao carregar estatísticas:', error);
     }
   }
 
-  function calculateStats(candidates: Candidate[]) {
-    const stats = {
-      total: candidates.length,
-      classificadosTriagem: 0,
-      desclassificadosTriagem: 0,
-      classificadosEntrevista: 0,
-      desclassificadosEntrevista: 0,
-      pcd: 0
-    };
+  async function loadReport() {
+    try {
+      setLoading(true);
+      console.log('📋 Carregando relatório...', {
+        reportType,
+        selectedAnalyst,
+        selectedInterviewer
+      });
 
-    candidates.forEach(candidate => {
-      const statusTriagem = (candidate.status_triagem || candidate.statusTriagem || candidate.status || '').toLowerCase();
-      const statusEntrevista = (candidate.status_entrevista || candidate.interview_status || '').toLowerCase();
-      const isPcd = getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd').toLowerCase() === 'sim';
+      const { googleSheetsService } = await import('../services/googleSheets');
 
-      if (statusTriagem === 'classificado') {
-        stats.classificadosTriagem++;
-      } else if (statusTriagem === 'desclassificado') {
-        stats.desclassificadosTriagem++;
+      let analystEmail = undefined;
+      let interviewerEmail = undefined;
+
+      if (selectedAnalyst !== 'todos') {
+        const analyst = analysts.find(a => a.id === selectedAnalyst);
+        analystEmail = analyst?.email;
+        console.log('👤 Filtro analista:', analystEmail);
       }
 
-      if (statusEntrevista === 'aprovado' || statusEntrevista === 'classificado') {
-        stats.classificadosEntrevista++;
-      } else if (statusEntrevista === 'reprovado' || statusEntrevista === 'desclassificado') {
-        stats.desclassificadosEntrevista++;
+      if (selectedInterviewer !== 'todos') {
+        const interviewer = interviewers.find(i => i.id === selectedInterviewer);
+        interviewerEmail = interviewer?.email;
+        console.log('🎤 Filtro entrevistador:', interviewerEmail);
       }
 
-      if (isPcd) {
-        stats.pcd++;
-      }
-    });
+      const result = await googleSheetsService.getReport(
+        reportType,
+        analystEmail,
+        interviewerEmail
+      );
 
-    setStats(stats);
+      console.log('📦 Resultado relatório:', result);
+
+      if (result.success && result.data) {
+        const data = Array.isArray(result.data) ? result.data : [];
+        setReportData(data);
+        console.log('✅ Relatório carregado:', data.length, 'registros');
+      } else {
+        console.error('❌ Falha ao carregar relatório:', result);
+        setReportData([]);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar relatório:', error);
+      setReportData([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function getCandidateField(candidate: Candidate, ...fieldNames: string[]): string {
@@ -185,131 +176,59 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     return '';
   }
 
-  const filteredCandidates = useMemo(() => {
-    let result = [...allCandidates];
-
-    // Filtro por status de triagem
-    if (filters.statusTriagem !== 'todos') {
-      result = result.filter(candidate => {
-        const status = (candidate.status_triagem || candidate.statusTriagem || candidate.status || '').toLowerCase();
-        return status === filters.statusTriagem;
-      });
-    }
-
-    // Filtro por status de entrevista
-    if (filters.statusEntrevista !== 'todos') {
-      result = result.filter(candidate => {
-        const status = (candidate.status_entrevista || candidate.interview_status || '').toLowerCase();
-        if (filters.statusEntrevista === 'classificados') {
-          return status === 'aprovado' || status === 'classificado';
-        } else if (filters.statusEntrevista === 'desclassificados') {
-          return status === 'reprovado' || status === 'desclassificado';
-        }
-        return false;
-      });
-    }
-
-    // Filtro por analista
-    if (filters.analista !== 'todos') {
-      result = result.filter(candidate => {
-        const analistaEmail = getCandidateField(candidate, 'assigned_to', 'Analista', 'analista_triagem');
-        const analyst = analysts.find(a => a.id === filters.analista);
-        return analistaEmail === analyst?.email || analistaEmail === filters.analista;
-      });
-    }
-
-    // Filtro por entrevistador
-    if (filters.entrevistador !== 'todos') {
-      result = result.filter(candidate => {
-        const entrevistadorEmail = getCandidateField(candidate, 'entrevistador', 'Entrevistador', 'interviewer');
-        const interviewer = interviewers.find(i => i.id === filters.entrevistador);
-        return entrevistadorEmail === interviewer?.email || entrevistadorEmail === filters.entrevistador;
-      });
-    }
-
-    // Filtro por PCD
-    if (filters.pcd !== 'todos') {
-      result = result.filter(candidate => {
-        const isPcd = getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd').toLowerCase() === 'sim';
-        return filters.pcd === 'sim' ? isPcd : !isPcd;
-      });
-    }
-
-    // Filtro por busca textual
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      result = result.filter(candidate => {
-        const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
-        const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
-        const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
-        return nomeCompleto.includes(searchLower) ||
-               nomeSocial.includes(searchLower) ||
-               cpf.includes(searchLower);
-      });
-    }
-
-    return result;
-  }, [allCandidates, filters, searchTerm, analysts, interviewers]);
-
-  function updateFilter(key: keyof Filters, value: any) {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }
-
-  function clearFilters() {
-    setFilters({
-      statusTriagem: 'todos',
-      statusEntrevista: 'todos',
-      analista: 'todos',
-      entrevistador: 'todos',
-      pcd: 'todos'
-    });
-    setSearchTerm('');
-  }
-
-  function getActiveFiltersCount(): number {
-    let count = 0;
-    if (filters.statusTriagem !== 'todos') count++;
-    if (filters.statusEntrevista !== 'todos') count++;
-    if (filters.analista !== 'todos') count++;
-    if (filters.entrevistador !== 'todos') count++;
-    if (filters.pcd !== 'todos') count++;
-    if (searchTerm.trim()) count++;
-    return count;
-  }
-
   function exportToCSV() {
-    if (filteredCandidates.length === 0) {
+    if (reportData.length === 0) {
       alert('Não há dados para exportar');
       return;
     }
 
-    const headers = [
-      'Nome Completo',
-      'Nome Social',
-      'CPF',
-      'Telefone',
-      'Cargos',
-      'Status Triagem',
-      'Analista',
-      'Status Entrevista',
-      'Pontuação Entrevista',
-      'Entrevistador',
-      'PCD'
-    ];
+    let headers: string[] = [];
+    let rows: string[][] = [];
 
-    const rows = filteredCandidates.map(c => [
-      getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
-      getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
-      getCandidateField(c, 'CPF', 'cpf'),
-      getCandidateField(c, 'TELEFONE', 'telefone'),
-      [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-      getCandidateField(c, 'status_triagem', 'statusTriagem', 'status'),
-      getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
-      getCandidateField(c, 'status_entrevista', 'interview_status'),
-      c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '-',
-      getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador'),
-      getCandidateField(c, 'VAGAPCD', 'vaga_pcd')
-    ]);
+    switch (reportType) {
+      case 'classificados':
+      case 'entrevista_classificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'PCD', 'Analista', 'Entrevistador'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
+          getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
+        ]);
+        break;
+
+      case 'desclassificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Motivo Desclassificação', 'PCD', 'Analista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'Motivo Desclassificação', 'motivo_desclassificacao'),
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+        ]);
+        break;
+
+      case 'entrevista_desclassificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Pontuação', 'PCD', 'Entrevistador'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
+        ]);
+        break;
+    }
 
     const csv = [
       headers.join(','),
@@ -321,7 +240,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     const url = URL.createObjectURL(blob);
 
     link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio_candidatos_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `relatorio_${reportType}_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
 
     document.body.appendChild(link);
@@ -334,70 +253,44 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function exportToPDF() {
-    if (filteredCandidates.length === 0) {
+    if (reportData.length === 0) {
       alert('Não há dados para exportar');
       return;
     }
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
+      const title = getReportTitle();
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Relatório de Candidatos</title>
+          <title>${title}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
             h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 10px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
             th { background-color: #f5f5f5; font-weight: bold; }
             tr:nth-child(even) { background-color: #f9f9f9; }
-            .header-info { margin-bottom: 20px; color: #666; font-size: 12px; }
+            .header-info { margin-bottom: 20px; color: #666; }
             @media print {
               body { margin: 10px; }
-              h1 { font-size: 16px; }
-              th, td { padding: 4px; font-size: 9px; }
+              h1 { font-size: 18px; }
+              th, td { padding: 4px; font-size: 10px; }
             }
           </style>
         </head>
         <body>
-          <h1>Relatório de Candidatos</h1>
+          <h1>${title}</h1>
           <div class="header-info">
             <p><strong>Data de emissão:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-            <p><strong>Total de registros:</strong> ${filteredCandidates.length}</p>
-            <p><strong>Filtros ativos:</strong> ${getActiveFiltersCount()}</p>
+            <p><strong>Total de registros:</strong> ${reportData.length}</p>
+            ${selectedAnalyst !== 'todos' ? `<p><strong>Analista:</strong> ${analysts.find(a => a.id === selectedAnalyst)?.name}</p>` : ''}
+            ${selectedInterviewer !== 'todos' ? `<p><strong>Entrevistador:</strong> ${interviewers.find(i => i.id === selectedInterviewer)?.name}</p>` : ''}
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Nome Completo</th>
-                <th>CPF</th>
-                <th>Telefone</th>
-                <th>Cargo</th>
-                <th>Status Triagem</th>
-                <th>Analista</th>
-                <th>Status Entrevista</th>
-                <th>Entrevistador</th>
-                <th>PCD</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredCandidates.map(c => `
-                <tr>
-                  <td>${getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado'}</td>
-                  <td>${getCandidateField(c, 'CPF', 'cpf') || 'Não informado'}</td>
-                  <td>${getCandidateField(c, 'TELEFONE', 'telefone') || 'Não informado'}</td>
-                  <td>${[getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo') || 'Não informado'}</td>
-                  <td>${getCandidateField(c, 'status_triagem', 'statusTriagem', 'status') || '-'}</td>
-                  <td>${getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'}</td>
-                  <td>${getCandidateField(c, 'status_entrevista', 'interview_status') || '-'}</td>
-                  <td>${getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'}</td>
-                  <td>${getCandidateField(c, 'VAGAPCD', 'vaga_pcd') || 'Não'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+          ${generatePDFTable()}
         </body>
         </html>
       `);
@@ -407,13 +300,125 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     }
   }
 
+  function generatePDFTable(): string {
+    const headers = getTableHeaders();
+    const rows = reportData.map(candidate => getTableRowData(candidate));
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            ${headers.map(header => `<th>${header}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr>
+              ${row.map(cell => `<td>${cell}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function getTableHeaders(): string[] {
+    const baseHeaders = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido'];
+
+    switch (reportType) {
+      case 'desclassificados':
+        return [...baseHeaders, 'Motivo Desclassificação', 'PCD', 'Analista'];
+      case 'entrevista_classificados':
+        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
+      case 'entrevista_desclassificados':
+        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
+      default:
+        return [...baseHeaders, 'PCD', 'Analista'];
+    }
+  }
+
+  function getTableRowData(candidate: Candidate): string[] {
+    const baseData = [
+      getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado',
+      getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-',
+      getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado',
+      getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado',
+      [getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'
+    ];
+
+    switch (reportType) {
+      case 'desclassificados':
+        return [
+          ...baseData,
+          getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado',
+          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+          getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
+        ];
+      case 'entrevista_classificados':
+      case 'entrevista_desclassificados':
+        return [
+          ...baseData,
+          (candidate.interview_score?.toString() || candidate.pontuacao_entrevista?.toString() || '0'),
+          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+          getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'
+        ];
+      default:
+        return [
+          ...baseData,
+          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+          getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
+        ];
+    }
+  }
+
+  function getReportTitle(): string {
+    switch (reportType) {
+      case 'classificados':
+        return 'Candidatos Classificados - Triagem';
+      case 'desclassificados':
+        return 'Candidatos Desclassificados - Triagem';
+      case 'entrevista_classificados':
+        return 'Candidatos Classificados - Entrevista';
+      case 'entrevista_desclassificados':
+        return 'Candidatos Desclassificados - Entrevista';
+      default:
+        return 'Relatório';
+    }
+  }
+
+  function shouldShowAnalystFilter(): boolean {
+    return reportType === 'classificados' || reportType === 'desclassificados';
+  }
+
+  function shouldShowInterviewerFilter(): boolean {
+    return reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados';
+  }
+
+  const filteredReportData = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return reportData;
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+
+    return reportData.filter(candidate => {
+      const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
+      const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
+      const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
+
+      return nomeCompleto.includes(searchLower) ||
+             nomeSocial.includes(searchLower) ||
+             cpf.includes(searchLower);
+    });
+  }, [reportData, searchTerm]);
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <div className="bg-white border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Relatórios</h2>
-            <p className="text-sm text-gray-600 mt-1">Visualize e exporte relatórios do processo seletivo com filtros cruzados</p>
+            <p className="text-sm text-gray-600 mt-1">Visualize e exporte relatórios do processo seletivo</p>
           </div>
           <button
             onClick={onClose}
@@ -423,22 +428,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-6 gap-4 mt-6">
-          <div className="bg-slate-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-slate-700">Total Geral</div>
-                <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
-              </div>
-              <Users className="w-8 h-8 text-slate-600" />
-            </div>
-          </div>
-
+        <div className="grid grid-cols-4 gap-4 mt-6">
           <div className="bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-blue-700">Classif. Triagem</div>
-                <div className="text-2xl font-bold text-blue-800">{stats.classificadosTriagem}</div>
+                <div className="text-sm text-blue-800">Classificados</div>
+                <div className="text-2xl font-bold text-blue-800">{stats.classificados}</div>
               </div>
               <Users className="w-8 h-8 text-blue-600" />
             </div>
@@ -447,8 +442,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           <div className="bg-red-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-red-700">Descl. Triagem</div>
-                <div className="text-2xl font-bold text-red-800">{stats.desclassificadosTriagem}</div>
+                <div className="text-sm text-red-800">Desclassificados</div>
+                <div className="text-2xl font-bold text-red-800">{stats.desclassificados}</div>
               </div>
               <UserX className="w-8 h-8 text-red-600" />
             </div>
@@ -457,8 +452,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           <div className="bg-green-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-green-700">Classif. Entrevista</div>
-                <div className="text-2xl font-bold text-green-800">{stats.classificadosEntrevista}</div>
+                <div className="text-sm text-green-800">Aprovados Entrevista</div>
+                <div className="text-2xl font-bold text-green-800">{stats.entrevistaClassificados}</div>
               </div>
               <ClipboardCheck className="w-8 h-8 text-green-600" />
             </div>
@@ -467,166 +462,137 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           <div className="bg-orange-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-orange-700">Descl. Entrevista</div>
-                <div className="text-2xl font-bold text-orange-800">{stats.desclassificadosEntrevista}</div>
+                <div className="text-sm text-orange-800">Reprovados Entrevista</div>
+                <div className="text-2xl font-bold text-orange-800">{stats.entrevistaDesclassificados}</div>
               </div>
               <UserX className="w-8 h-8 text-orange-600" />
-            </div>
-          </div>
-
-          <div className="bg-purple-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-purple-700">PCD</div>
-                <div className="text-2xl font-bold text-purple-800">{stats.pcd}</div>
-              </div>
-              <Users className="w-8 h-8 text-purple-600" />
             </div>
           </div>
         </div>
       </div>
 
       <div className="bg-white border-b px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">
-              Filtros Cruzados {getActiveFiltersCount() > 0 && `(${getActiveFiltersCount()} ativos)`}
-            </span>
-          </div>
-          {getActiveFiltersCount() > 0 && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Limpar Filtros
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-medium">Status Triagem</label>
-            <select
-              value={filters.statusTriagem}
-              onChange={(e) => updateFilter('statusTriagem', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="todos">Todos</option>
-              <option value="classificado">Classificados</option>
-              <option value="desclassificado">Desclassificados</option>
-            </select>
+            <span className="text-sm font-medium text-gray-700">Filtros:</span>
           </div>
 
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-medium">Status Entrevista</label>
-            <select
-              value={filters.statusEntrevista}
-              onChange={(e) => updateFilter('statusEntrevista', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="todos">Todos</option>
-              <option value="classificados">Classificados</option>
-              <option value="desclassificados">Desclassificados</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-medium">
-              Analista {analysts.length > 0 && `(${analysts.length})`}
-            </label>
-            <select
-              value={filters.analista}
-              onChange={(e) => updateFilter('analista', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="todos">Todos</option>
-              {analysts.map((analyst) => (
-                <option key={analyst.id} value={analyst.id}>
-                  {analyst.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-medium">
-              Entrevistador {interviewers.length > 0 && `(${interviewers.length})`}
-            </label>
-            <select
-              value={filters.entrevistador}
-              onChange={(e) => updateFilter('entrevistador', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="todos">Todos</option>
-              {interviewers.map((interviewer) => (
-                <option key={interviewer.id} value={interviewer.id}>
-                  {interviewer.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-medium">PCD</label>
-            <select
-              value={filters.pcd}
-              onChange={(e) => updateFilter('pcd', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="todos">Todos</option>
-              <option value="sim">Sim</option>
-              <option value="nao">Não</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-medium">Buscar Candidato</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Nome ou CPF..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+          <div className="flex-1 flex items-center gap-4 flex-wrap">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Triagem</label>
+              <select
+                value={reportType.startsWith('entrevista_') ? '' : reportType}
+                onChange={(e) => e.target.value && setReportType(e.target.value as ReportType)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Selecione...</option>
+                <option value="classificados">Classificados</option>
+                <option value="desclassificados">Desclassificados</option>
+              </select>
             </div>
-          </div>
-        </div>
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t">
-          <div className="text-sm text-gray-600">
-            <span className="font-semibold text-gray-800">{filteredCandidates.length}</span> candidatos encontrados
-            {allCandidates.length > filteredCandidates.length && ` de ${allCandidates.length} total`}
-          </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Entrevista</label>
+              <select
+                value={reportType.startsWith('entrevista_') ? reportType : ''}
+                onChange={(e) => e.target.value && setReportType(e.target.value as ReportType)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Selecione...</option>
+                <option value="entrevista_classificados">Classificados</option>
+                <option value="entrevista_desclassificados">Desclassificados</option>
+              </select>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={exportToPDF}
-              disabled={filteredCandidates.length === 0}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              PDF
-            </button>
-            <button
-              onClick={exportToExcel}
-              disabled={filteredCandidates.length === 0}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Excel
-            </button>
-            <button
-              onClick={exportToCSV}
-              disabled={filteredCandidates.length === 0}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              CSV
-            </button>
+            {shouldShowAnalystFilter() && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Analista {analysts.length > 0 && `(${analysts.length})`}
+                </label>
+                <select
+                  value={selectedAnalyst}
+                  onChange={(e) => setSelectedAnalyst(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="todos">Todos os Analistas</option>
+                  {analysts.length === 0 ? (
+                    <option disabled>Carregando...</option>
+                  ) : (
+                    analysts.map((analyst) => (
+                      <option key={analyst.id} value={analyst.id}>
+                        {analyst.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            )}
+
+            {shouldShowInterviewerFilter() && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Entrevistador {interviewers.length > 0 && `(${interviewers.length})`}
+                </label>
+                <select
+                  value={selectedInterviewer}
+                  onChange={(e) => setSelectedInterviewer(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="todos">Todos os Entrevistadores</option>
+                  {interviewers.length === 0 ? (
+                    <option disabled>Carregando...</option>
+                  ) : (
+                    interviewers.map((interviewer) => (
+                      <option key={interviewer.id} value={interviewer.id}>
+                        {interviewer.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Buscar Candidato</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Nome ou CPF..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                />
+              </div>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={exportToPDF}
+                disabled={reportData.length === 0}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                PDF
+              </button>
+              <button
+                onClick={exportToExcel}
+                disabled={reportData.length === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Excel
+              </button>
+              <button
+                onClick={exportToCSV}
+                disabled={reportData.length === 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                CSV
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -636,13 +602,23 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           <div className="flex items-center justify-center h-64">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
-        ) : filteredCandidates.length === 0 ? (
+        ) : reportData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
             <FileText className="w-16 h-16 text-gray-300 mb-4" />
-            <p className="text-gray-500">Nenhum candidato encontrado com os filtros selecionados</p>
+            <p className="text-gray-500">Nenhum dado encontrado para este relatório</p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">{getReportTitle()}</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {filteredReportData.length} {filteredReportData.length === 1 ? 'registro encontrado' : 'registros encontrados'}
+                {searchTerm && ` (filtrados de ${reportData.length} total)`}
+                {selectedAnalyst !== 'todos' && ` - Analista: ${analysts.find(a => a.id === selectedAnalyst)?.name}`}
+                {selectedInterviewer !== 'todos' && ` - Entrevistador: ${interviewers.find(i => i.id === selectedInterviewer)?.name}`}
+              </p>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
@@ -651,36 +627,58 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                       Nome Completo
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                      Nome Social
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                       CPF
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                       Telefone
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Cargo
+                      Cargo Pretendido
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Status Triagem
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Analista
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Status Entrevista
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Entrevistador
-                    </th>
+                    {reportType === 'desclassificados' && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Motivo Desclassificação
+                      </th>
+                    )}
+                    {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Pontuação
+                      </th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                       PCD
                     </th>
+                    {shouldShowAnalystFilter() && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Analista
+                      </th>
+                    )}
+                    {shouldShowInterviewerFilter() && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Entrevistador
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredCandidates.map((candidate, index) => (
+                  {filteredReportData.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                        <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        Nenhum candidato encontrado com "{searchTerm}"
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReportData.map((candidate, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-800 font-medium">
                         {getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 font-mono">
                         {getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado'}
@@ -691,36 +689,24 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {[getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'}
                       </td>
-                      <td className="px-4 py-3 text-sm">
-                        {(() => {
-                          const status = getCandidateField(candidate, 'status_triagem', 'statusTriagem', 'status');
-                          const statusLower = status.toLowerCase();
-                          if (statusLower === 'classificado') {
-                            return <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Classificado</span>;
-                          } else if (statusLower === 'desclassificado') {
-                            return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Desclassificado</span>;
-                          }
-                          return <span className="text-gray-400">{status || '-'}</span>;
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {(() => {
-                          const status = getCandidateField(candidate, 'status_entrevista', 'interview_status');
-                          const statusLower = status.toLowerCase();
-                          if (statusLower === 'aprovado' || statusLower === 'classificado') {
-                            return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Aprovado</span>;
-                          } else if (statusLower === 'reprovado' || statusLower === 'desclassificado') {
-                            return <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">Reprovado</span>;
-                          }
-                          return <span className="text-gray-400">{status || '-'}</span>;
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'}
-                      </td>
+                      {reportType === 'desclassificados' && (
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado'}
+                        </td>
+                      )}
+                      {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
+                        <td className="px-4 py-3 text-sm font-semibold">
+                          <span className={
+                            Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 80
+                              ? 'text-green-700'
+                              : Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 60
+                              ? 'text-yellow-700'
+                              : 'text-red-700'
+                          }>
+                            {candidate.interview_score || candidate.pontuacao_entrevista || 0}/120
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-sm">
                         {getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') === 'Sim' ? (
                           <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
@@ -730,8 +716,19 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                           <span className="text-gray-400">Não</span>
                         )}
                       </td>
+                      {shouldShowAnalystFilter() && (
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'}
+                        </td>
+                      )}
+                      {shouldShowInterviewerFilter() && (
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'}
+                        </td>
+                      )}
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
