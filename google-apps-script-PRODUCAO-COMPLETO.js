@@ -1858,6 +1858,8 @@ function getReport(params) {
         include = true;
       } else if (reportType === 'desclassificados' && status === 'Desclassificado') {
         include = true;
+      } else if (reportType === 'todos_triagem' && (status === 'Classificado' || status === 'Desclassificado')) {
+        include = true;
       } else if (reportType === 'entrevista_classificados' && statusEntrevista === 'Avaliado' && interviewResult === 'Classificado') {
         include = true;
       } else if (reportType === 'entrevista_desclassificados' && statusEntrevista === 'Avaliado' && interviewResult === 'Desclassificado') {
