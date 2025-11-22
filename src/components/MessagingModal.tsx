@@ -201,34 +201,10 @@ export default function MessagingModal({
 
       console.log('✅ Mensagens enviadas:', successCount);
       console.log('❌ Falhas:', failCount);
+      console.log('📊 Resultados detalhados:', results);
 
-      // ✅ SEGUNDO: Atualizar o status de envio na planilha
-      if (successCount > 0) {
-        console.log('🔄 Atualizando status de envio na planilha...');
-        
-        // Filtrar apenas os candidatos que receberam mensagens com sucesso
-        const successfulCandidates = candidateIdentifiers.filter(candidate => {
-          const result = results.find((r: any) => r.candidateId === candidate.id);
-          return result && result.success;
-        });
-
-        if (successfulCandidates.length > 0) {
-          console.log('📝 Candidatos para marcar como enviado:', successfulCandidates);
-
-          // ✅ ATUALIZAR O CAMPO email_sent OU sms_sent
-          const updateResult = await googleSheetsService.updateMessageStatus(
-            successfulCandidates.map(c => c.registration_number || c.CPF || c.id),
-            messageType,
-            'Sim' // ✅ Valor que será gravado na planilha
-          );
-
-          if (!updateResult.success) {
-            console.error('⚠️ Erro ao atualizar status, mas mensagens foram enviadas:', updateResult.error);
-          } else {
-            console.log('✅ Status atualizado com sucesso na planilha');
-          }
-        }
-      }
+      // O status já é atualizado automaticamente pelo Google Apps Script
+      // na função _updateMessageStatusInCandidates_ dentro de sendMessages
 
       // ✅ MOSTRAR RESULTADO PARA O USUÁRIO
       let message = `${successCount} mensagem(ns) enviada(s) com sucesso`;
