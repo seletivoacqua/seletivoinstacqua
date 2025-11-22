@@ -864,7 +864,7 @@ function _sendEmailGmail_(to, subject, body, alias) {
     };
 
     const aliasCheck = myFunction();
-    const aliases = aliasCheck.aliases;
+    const aliases = (aliasCheck && aliasCheck.aliases) ? aliasCheck.aliases : [];
 
     let finalAlias = null;
 
