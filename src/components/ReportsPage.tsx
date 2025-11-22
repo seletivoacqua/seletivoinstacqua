@@ -6,7 +6,7 @@ interface ReportsPageProps {
   onClose: () => void;
 }
 
-type ReportType = 'classificados' | 'desclassificados' | 'entrevista_classificados' | 'entrevista_desclassificados';
+type ReportType = 'classificados' | 'desclassificados' | 'entrevista_classificados' | 'entrevista_desclassificados' | 'todos_triagem';
 
 interface Analyst {
   id: string;
@@ -219,6 +219,20 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         ]);
         break;
 
+      case 'todos_triagem':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Status', 'PCD', 'Analista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'Status', 'statusTriagem', 'status_triagem', 'status'),
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+        ]);
+        break;
+
       case 'entrevista_desclassificados':
         headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Pontuação', 'PCD', 'Entrevistador'];
         rows = reportData.map(c => [
@@ -332,6 +346,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     switch (reportType) {
       case 'desclassificados':
         return [...baseHeaders, 'Motivo Desclassificação', 'PCD', 'Analista'];
+      case 'todos_triagem':
+        return [...baseHeaders, 'Status', 'PCD', 'Analista'];
       case 'entrevista_classificados':
         return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
       case 'entrevista_desclassificados':
@@ -358,6 +374,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
           getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
         ];
+      case 'todos_triagem':
+        return [
+          ...baseData,
+          getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status') || 'Não informado',
+          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+          getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
+        ];
       case 'entrevista_classificados':
       case 'entrevista_desclassificados':
         return [
@@ -381,6 +404,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         return 'Candidatos Classificados - Triagem';
       case 'desclassificados':
         return 'Candidatos Desclassificados - Triagem';
+      case 'todos_triagem':
+        return 'Todos os Candidatos Triados';
       case 'entrevista_classificados':
         return 'Candidatos Classificados - Entrevista';
       case 'entrevista_desclassificados':
@@ -391,7 +416,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function shouldShowAnalystFilter(): boolean {
-    return reportType === 'classificados' || reportType === 'desclassificados';
+    return reportType === 'classificados' || reportType === 'desclassificados' || reportType === 'todos_triagem';
   }
 
   function shouldShowInterviewerFilter(): boolean {
@@ -492,6 +517,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               >
                 <option value="classificados">Classificados - Triagem</option>
                 <option value="desclassificados">Desclassificados - Triagem</option>
+                <option value="todos_triagem">Todos - Triagem</option>
                 <option value="entrevista_classificados">Classificados - Entrevista</option>
                 <option value="entrevista_desclassificados">Desclassificados - Entrevista</option>
               </select>
@@ -635,6 +661,11 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                         Motivo Desclassificação
                       </th>
                     )}
+                    {reportType === 'todos_triagem' && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Status
+                      </th>
+                    )}
                     {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                         Pontuação
@@ -684,6 +715,20 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                       {reportType === 'desclassificados' && (
                         <td className="px-4 py-3 text-sm text-gray-600">
                           {getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado'}
+                        </td>
+                      )}
+                      {reportType === 'todos_triagem' && (
+                        <td className="px-4 py-3 text-sm">
+                          {(() => {
+                            const status = getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status').toLowerCase();
+                            if (status === 'classificado') {
+                              return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Classificado</span>;
+                            } else if (status === 'desclassificado') {
+                              return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">Desclassificado</span>;
+                            } else {
+                              return <span className="text-gray-400">{status || 'Não informado'}</span>;
+                            }
+                          })()}
                         </td>
                       )}
                       {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
