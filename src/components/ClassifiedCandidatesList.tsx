@@ -227,10 +227,10 @@ export default function ClassifiedCandidatesList() {
     }
 
     // Filtro por pontuação (mínima)
-    if (filterScore !== 'all' && filterScore !== '') {
+    if (filterScore !== 'all') {
       const score = getScore(candidate);
       const minScore = Number(filterScore);
-      if (isNaN(minScore) || score < minScore) return false;
+      if (score < minScore) return false;
     }
 
     // Filtro por cargo
@@ -244,7 +244,7 @@ export default function ClassifiedCandidatesList() {
     }
 
     return true;
-  }).sort((a, b) => getScore(b) - getScore(a));
+  });
 
   if (loading) {
     return (
