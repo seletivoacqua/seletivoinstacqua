@@ -244,7 +244,7 @@ export default function ClassifiedCandidatesList() {
     }
 
     return true;
-  });
+  }).sort((a, b) => getScore(b) - getScore(a));
 
   if (loading) {
     return (
