@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Mail, MessageSquare, Loader2, Send, Calendar, RefreshCw, Search } from 'lucide-react';
+import { CheckCircle, Mail, MessageSquare, Loader2, Send, Calendar, RefreshCw, Search, FileSpreadsheet } from 'lucide-react';
 import MessagingModal from './MessagingModal';
 import type { Candidate } from '../types/candidate';
 
@@ -147,6 +147,45 @@ export default function ClassifiedCandidatesList() {
     }
   }
 
+  function exportToXLS() {
+    const dataToExport = filteredCandidates.map(candidate => {
+      const email = (candidate as any).EMAIL || (candidate as any).Email || (candidate as any).email;
+      const telefone = (candidate as any).TELEFONE || (candidate as any).Telefone || (candidate as any).telefone;
+
+      return {
+        'Nome Completo': candidate.NOMECOMPLETO || '',
+        'Nome Social': candidate.NOMESOCIAL || '',
+        'CPF': candidate.CPF || '',
+        'Email': email || '',
+        'Telefone': telefone || '',
+        'Área': candidate.AREAATUACAO || '',
+        'Cargo Admin': (candidate as any).CARGOADMIN || '',
+        'Cargo Assis': (candidate as any).CARGOASSIS || '',
+        'PCD': isPCD(candidate) ? 'Sim' : 'Não',
+        'Pontuação': getScore(candidate).toFixed(1),
+        'Email Enviado': isMessageSent(candidate.email_sent) ? 'Sim' : 'Não',
+        'SMS Enviado': isMessageSent(candidate.sms_sent) ? 'Sim' : 'Não'
+      };
+    });
+
+    const headers = Object.keys(dataToExport[0]);
+    const csvContent = [
+      headers.join('\t'),
+      ...dataToExport.map(row => headers.map(header => row[header as keyof typeof row]).join('\t'))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `candidatos_classificados_${new Date().toISOString().split('T')[0]}.xls`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   // Função para renderizar os cargos - NOVA
   const renderCargos = (candidate: Candidate) => {
     const cargos = [];
@@ -237,6 +276,15 @@ export default function ClassifiedCandidatesList() {
         </div>
 
         <div className="flex gap-2">
+          <button
+            onClick={exportToXLS}
+            disabled={filteredCandidates.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Exportar XLS
+          </button>
+
           <button
             onClick={loadClassifiedCandidates}
             disabled={loading}
