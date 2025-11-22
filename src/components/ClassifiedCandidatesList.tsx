@@ -161,9 +161,11 @@ export default function ClassifiedCandidatesList() {
     return vagaPcd.toLowerCase() === 'sim' || vagaPcd.toLowerCase() === 'true' || vagaPcd === 'TRUE';
   };
 
-  // Função para obter pontuação
+  // Função para obter pontuação (soma de capacidade_tecnica e experiencia)
   const getScore = (candidate: Candidate): number => {
-    return candidate.pontuacao_triagem || 0;
+    const capacidadeTecnica = Number((candidate as any).capacidade_tecnica) || 0;
+    const experiencia = Number((candidate as any).experiencia) || 0;
+    return capacidadeTecnica + experiencia;
   };
 
   // Filtrar candidatos
@@ -183,13 +185,11 @@ export default function ClassifiedCandidatesList() {
       if (filterPCD === 'nao-pcd' && candidateIsPCD) return false;
     }
 
-    // Filtro por pontuação
+    // Filtro por pontuação (mínima)
     if (filterScore !== 'all') {
       const score = getScore(candidate);
-      if (filterScore === '0-3' && (score < 0 || score > 3)) return false;
-      if (filterScore === '4-6' && (score < 4 || score > 6)) return false;
-      if (filterScore === '7-8' && (score < 7 || score > 8)) return false;
-      if (filterScore === '9-10' && (score < 9 || score > 10)) return false;
+      const minScore = Number(filterScore);
+      if (score < minScore) return false;
     }
 
     return true;
@@ -299,19 +299,17 @@ export default function ClassifiedCandidatesList() {
           {/* Filtro Pontuação */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pontuação
+              Pontuação (Mínima)
             </label>
-            <select
-              value={filterScore}
-              onChange={(e) => setFilterScore(e.target.value)}
+            <input
+              type="number"
+              value={filterScore === 'all' ? '' : filterScore}
+              onChange={(e) => setFilterScore(e.target.value || 'all')}
+              placeholder="Ex: 7"
+              min="0"
+              step="0.1"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Todas</option>
-              <option value="0-3">0 a 3 pontos</option>
-              <option value="4-6">4 a 6 pontos</option>
-              <option value="7-8">7 a 8 pontos</option>
-              <option value="9-10">9 a 10 pontos</option>
-            </select>
+            />
           </div>
         </div>
       </div>
