@@ -174,12 +174,12 @@ export default function ClassifiedCandidatesList() {
       ...dataToExport.map(row => headers.map(header => row[header as keyof typeof row]).join('\t'))
     ].join('\n');
 
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
 
     link.setAttribute('href', url);
-    link.setAttribute('download', `candidatos_classificados_${new Date().toISOString().split('T')[0]}.xls`);
+    link.setAttribute('download', `candidatos_classificados_${new Date().toISOString().split('T')[0]}.xlsx`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
