@@ -227,10 +227,10 @@ export default function ClassifiedCandidatesList() {
     }
 
     // Filtro por pontuação (mínima)
-    if (filterScore !== 'all') {
+    if (filterScore !== 'all' && filterScore !== '') {
       const score = getScore(candidate);
       const minScore = Number(filterScore);
-      if (score < minScore) return false;
+      if (isNaN(minScore) || score < minScore) return false;
     }
 
     // Filtro por cargo
