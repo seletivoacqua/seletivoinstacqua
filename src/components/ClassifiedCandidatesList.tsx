@@ -170,16 +170,19 @@ export default function ClassifiedCandidatesList() {
 
     const headers = Object.keys(dataToExport[0]);
     const csvContent = [
-      headers.join('\t'),
-      ...dataToExport.map(row => headers.map(header => row[header as keyof typeof row]).join('\t'))
+      headers.join(';'),
+      ...dataToExport.map(row => headers.map(header => {
+        const value = String(row[header as keyof typeof row]);
+        return value.includes(';') || value.includes(',') || value.includes('\n') ? `"${value}"` : value;
+      }).join(';'))
     ].join('\n');
 
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
 
     link.setAttribute('href', url);
-    link.setAttribute('download', `candidatos_classificados_${new Date().toISOString().split('T')[0]}.xlsx`);
+    link.setAttribute('download', `candidatos_classificados_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -282,7 +285,7 @@ export default function ClassifiedCandidatesList() {
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Exportar XLS
+            Exportar Excel
           </button>
 
           <button
