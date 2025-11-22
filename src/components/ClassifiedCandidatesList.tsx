@@ -158,7 +158,7 @@ export default function ClassifiedCandidatesList() {
 
   // Função para verificar se é PCD
   const isPCD = (candidate: Candidate): boolean => {
-    const vagaPcd = (candidate as any).VAGAPCD || (candidate as any).vagapcd || (candidate as any).vaga_pcd || '';
+    const vagaPcd = (candidate as any).PCD || (candidate as any).VAGAPCD || (candidate as any).vagapcd || (candidate as any).vaga_pcd || '';
     const vagaPcdStr = String(vagaPcd).toLowerCase().trim();
     return vagaPcdStr === 'sim' || vagaPcdStr === 'true' || vagaPcdStr === 'yes' || vagaPcdStr === 's';
   };
