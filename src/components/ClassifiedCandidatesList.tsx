@@ -16,6 +16,7 @@ export default function ClassifiedCandidatesList() {
   const [searchName, setSearchName] = useState('');
   const [filterPCD, setFilterPCD] = useState<string>('all');
   const [filterScore, setFilterScore] = useState<string>('all');
+  const [filterCargo, setFilterCargo] = useState<string>('all');
 
   useEffect(() => {
     loadClassifiedCandidates();
@@ -157,8 +158,9 @@ export default function ClassifiedCandidatesList() {
 
   // Função para verificar se é PCD
   const isPCD = (candidate: Candidate): boolean => {
-    const vagaPcd = candidate.VAGAPCD || candidate.vaga_pcd || '';
-    return vagaPcd.toLowerCase() === 'sim' || vagaPcd.toLowerCase() === 'true' || vagaPcd === 'TRUE';
+    const vagaPcd = (candidate as any).VAGAPCD || '';
+    const vagaPcdStr = String(vagaPcd).toLowerCase();
+    return vagaPcdStr === 'sim' || vagaPcdStr === 'true';
   };
 
   // Função para obter pontuação (soma de capacidade_tecnica e experiencia)
@@ -190,6 +192,16 @@ export default function ClassifiedCandidatesList() {
       const score = getScore(candidate);
       const minScore = Number(filterScore);
       if (score < minScore) return false;
+    }
+
+    // Filtro por cargo
+    if (filterCargo !== 'all') {
+      const cargoAdmin = ((candidate as any).CARGOADMIN || '').toLowerCase();
+      const cargoAssis = ((candidate as any).CARGOASSIS || '').toLowerCase();
+      const searchCargo = filterCargo.toLowerCase();
+      if (!cargoAdmin.includes(searchCargo) && !cargoAssis.includes(searchCargo)) {
+        return false;
+      }
     }
 
     return true;
@@ -262,7 +274,7 @@ export default function ClassifiedCandidatesList() {
 
       {/* Filtros */}
       <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Busca por nome */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -308,6 +320,20 @@ export default function ClassifiedCandidatesList() {
               placeholder="Ex: 7"
               min="0"
               step="0.1"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Filtro Cargo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cargo Pretendido
+            </label>
+            <input
+              type="text"
+              value={filterCargo === 'all' ? '' : filterCargo}
+              onChange={(e) => setFilterCargo(e.target.value || 'all')}
+              placeholder="Digite o cargo..."
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
