@@ -11,6 +11,7 @@ import {
   generateGeneralReportHTML,
   generateClassifiedReportHTML,
   generateDisqualifiedReportHTML,
+  generateAllScreenedReportHTML,
   openReportInNewWindow
 } from '../services/reportService';
 import { RefreshCw, AlertCircle } from 'lucide-react';
@@ -180,6 +181,11 @@ export default function Dashboard({ sessionId, analystEmail, onLogout }: Dashboa
     openReportInNewWindow(html);
   };
 
+  const handleGenerateAllScreenedReport = (filterType: string, filterValue: string) => {
+    const html = generateAllScreenedReportHTML(candidates, analystEmail, filterType, filterValue);
+    openReportInNewWindow(html);
+  };
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -310,6 +316,7 @@ export default function Dashboard({ sessionId, analystEmail, onLogout }: Dashboa
         onGenerateGeneralReport={handleGenerateGeneralReport}
         onGenerateClassifiedReport={handleGenerateClassifiedReport}
         onGenerateDisqualifiedReport={handleGenerateDisqualifiedReport}
+        onGenerateAllScreenedReport={handleGenerateAllScreenedReport}
       />
     </div>
   );

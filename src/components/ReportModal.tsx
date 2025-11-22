@@ -9,6 +9,7 @@ interface ReportModalProps {
   onGenerateClassifiedReport: (filterType: string, filterValue: string) => void;
   onGenerateDisqualifiedReport: (filterType: string, filterValue: string) => void;
   onGenerateGeneralReport: (filterType: string, filterValue: string) => void;
+  onGenerateAllScreenedReport: (filterType: string, filterValue: string) => void;
 }
 
 export default function ReportModal({
@@ -16,7 +17,8 @@ export default function ReportModal({
   onClose,
   onGenerateClassifiedReport,
   onGenerateDisqualifiedReport,
-  onGenerateGeneralReport
+  onGenerateGeneralReport,
+  onGenerateAllScreenedReport
 }: ReportModalProps) {
   const [analysts, setAnalysts] = useState<UserType[]>([]);
   const [interviewers, setInterviewers] = useState<UserType[]>([]);
@@ -257,6 +259,35 @@ export default function ReportModal({
                     <h3 className="text-lg font-bold text-slate-800 mb-1">Apenas Desclassificados</h3>
                     <p className="text-sm text-slate-600">
                       Lista detalhada com nome, área, cargo e número de registro dos candidatos desclassificados
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (canGenerateReport()) {
+                    onGenerateAllScreenedReport(filterType, getFilterValue());
+                    onClose();
+                  }
+                }}
+                disabled={!canGenerateReport()}
+                className={`w-full p-4 border-2 rounded-lg transition-all group ${
+                  canGenerateReport()
+                    ? 'bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-purple-300 cursor-pointer'
+                    : 'bg-slate-100 border-slate-300 cursor-not-allowed opacity-60'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center transition-transform ${
+                    canGenerateReport() ? 'bg-purple-600 group-hover:scale-110' : 'bg-slate-400'
+                  }`}>
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">Todos Triagem</h3>
+                    <p className="text-sm text-slate-600">
+                      Lista completa com todos os candidatos triados (classificados e desclassificados juntos)
                     </p>
                   </div>
                 </div>

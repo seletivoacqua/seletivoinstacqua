@@ -537,6 +537,135 @@ export function generateDisqualifiedReportHTML(
   `;
 }
 
+export function generateAllScreenedReportHTML(
+  candidates: any[],
+  analystEmail: string,
+  filterType: string = 'all',
+  filterValue: string = 'todos'
+): string {
+  const filteredCandidates = filterCandidates(candidates, filterType, filterValue);
+
+  const allScreened = filteredCandidates.filter(c => {
+    const status = getCandidateStatus(c);
+    return status === 'classificado' || status === 'desclassificado';
+  });
+
+  const date = new Date().toLocaleDateString('pt-BR');
+  const time = new Date().toLocaleTimeString('pt-BR');
+
+  const filterLabel = filterType === 'all' ? 'Todos' :
+                      filterType === 'analyst' ? `Analista: ${filterValue}` :
+                      `Entrevistador: ${filterValue}`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório - Todos Candidatos Triados</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+    }
+    h1 {
+      color: #7c3aed;
+      border-bottom: 3px solid #7c3aed;
+      padding-bottom: 10px;
+    }
+    .header {
+      background-color: #f3f4f6;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #7c3aed;
+      color: white;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+    .count {
+      font-size: 24px;
+      font-weight: bold;
+      color: #7c3aed;
+      margin: 20px 0;
+    }
+    .status-classificado {
+      background-color: #dcfce7;
+      color: #16a34a;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .status-desclassificado {
+      background-color: #fee2e2;
+      color: #dc2626;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>📋 Todos os Candidatos Triados</h1>
+
+  <div class="header">
+    <p><strong>Data:</strong> ${date} às ${time}</p>
+    <p><strong>Gerado por:</strong> ${analystEmail}</p>
+    <p><strong>Filtro:</strong> ${filterLabel}</p>
+  </div>
+
+  <p class="count">Total: ${allScreened.length} candidatos triados</p>
+
+  <table>
+    <tr>
+      <th>Nº</th>
+      <th>Nome</th>
+      <th>Área</th>
+      <th>Cargo</th>
+      <th>CPF</th>
+      <th>Nº Registro</th>
+      <th>Status</th>
+    </tr>
+    ${allScreened
+      .map((c, idx) => {
+        const status = getCandidateStatus(c);
+        const statusClass = status === 'classificado' ? 'status-classificado' : 'status-desclassificado';
+        const statusLabel = status === 'classificado' ? 'Classificado' : 'Desclassificado';
+
+        return `
+    <tr>
+      <td>${idx + 1}</td>
+      <td>${getCandidateName(c)}</td>
+      <td>${getCandidateArea(c)}</td>
+      <td>${getCandidateCargo(c)}</td>
+      <td>${getCandidateCPF(c) || '-'}</td>
+      <td>${getCandidateRegistration(c)}</td>
+      <td><span class="${statusClass}">${statusLabel}</span></td>
+    </tr>
+        `;
+      })
+      .join('')}
+  </table>
+</body>
+</html>
+  `;
+}
+
 export function openReportInNewWindow(html: string) {
   const printWindow = window.open('', '_blank');
   if (printWindow) {
