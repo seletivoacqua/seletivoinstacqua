@@ -42,6 +42,7 @@ export default function DisqualifiedCandidatesList() {
   const [loading, setLoading] = useState(true);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [searchName, setSearchName] = useState('');
+  const [filterCargo, setFilterCargo] = useState<string>('all');
 
   useEffect(() => {
     loadDisqualifiedCandidates();
@@ -152,6 +153,17 @@ export default function DisqualifiedCandidatesList() {
         return false;
       }
     }
+
+    // Filtro por cargo
+    if (filterCargo !== 'all') {
+      const cargoAdmin = (candidate.CARGOADMIN || '').toLowerCase();
+      const cargoAssis = (candidate.CARGOASSIS || '').toLowerCase();
+      const searchCargo = filterCargo.toLowerCase();
+      if (!cargoAdmin.includes(searchCargo) && !cargoAssis.includes(searchCargo)) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -196,18 +208,35 @@ export default function DisqualifiedCandidatesList() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Buscar por Nome
-          </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Busca por nome */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Buscar por Nome
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                placeholder="Digite o nome..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Filtro Cargo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cargo Pretendido
+            </label>
             <input
               type="text"
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              placeholder="Digite o nome..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={filterCargo === 'all' ? '' : filterCargo}
+              onChange={(e) => setFilterCargo(e.target.value || 'all')}
+              placeholder="Digite o cargo..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
