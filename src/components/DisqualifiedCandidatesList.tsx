@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { XCircle, Loader2, RefreshCw, Search } from 'lucide-react';
 
 interface Candidate {
   id: string;
@@ -41,6 +41,7 @@ export default function DisqualifiedCandidatesList() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [searchName, setSearchName] = useState('');
 
   useEffect(() => {
     loadDisqualifiedCandidates();
@@ -144,6 +145,16 @@ export default function DisqualifiedCandidatesList() {
     }
   }
 
+  const filteredCandidates = candidates.filter(candidate => {
+    if (searchName) {
+      const name = getNomeCompleto(candidate).toLowerCase();
+      if (!name.includes(searchName.toLowerCase())) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -171,7 +182,7 @@ export default function DisqualifiedCandidatesList() {
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Candidatos Desclassificados</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {candidates.length} candidato(s) desclassificado(s)
+            {filteredCandidates.length} de {candidates.length} candidato(s)
           </p>
         </div>
         <button
@@ -182,6 +193,24 @@ export default function DisqualifiedCandidatesList() {
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Atualizar
         </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <div className="relative">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Buscar por Nome
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              placeholder="Digite o nome..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -199,7 +228,7 @@ export default function DisqualifiedCandidatesList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {candidates.map((c) => (
+            {filteredCandidates.map((c) => (
               <tr key={c.id || c.registration_number} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-800">
                   {getNomeCompleto(c)}
