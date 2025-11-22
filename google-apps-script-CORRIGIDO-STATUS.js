@@ -887,94 +887,52 @@ function _sendEmailGmail_(to, subject, body, alias) {
   }
 }
 
-function _sendSmsTwilio_(to, body) {
+function _sendSmsTwilio_(to, body){
+  if (!_twilioEnabled_()) {
+    Logger.log('⚠️ Twilio não configurado - Pulando SMS');
+    return { ok: false, skipped: true, error: 'Twilio não configurado' };
+  }
+
+  const sid = _getProp_('TWILIO_SID');
+  const token = _getProp_('TWILIO_TOKEN');
+  const from = _getProp_('TWILIO_FROM');
+
+  const formattedTo = _formatE164_(to);
+  Logger.log('📱 Enviando SMS: ' + formattedTo);
+
+  const url = 'https://api.twilio.com/2010-04-01/Accounts/' + sid + '/Messages.json';
+  const payload = {
+    To: formattedTo,
+    From: from,
+    Body: body
+  };
+
+  const options = {
+    method: 'post',
+    payload: payload,
+    muteHttpExceptions: true,
+    headers: {
+      Authorization: 'Basic ' + Utilities.base64Encode(sid + ':' + token)
+    }
+  };
+
   try {
-    if (!_twilioEnabled_()) {
-      Logger.log('⚠️ Twilio não configurado - SMS desabilitado');
-      return {
-        ok: false,
-        skipped: true,
-        error: 'Twilio não configurado. Verifique as variáveis TWILIO_SID, TWILIO_TOKEN e TWILIO_FROM.'
-      };
+    const res = UrlFetchApp.fetch(url, options);
+    const code = res.getResponseCode();
+
+    if (code >= 200 && code < 300) {
+      Logger.log('✅ SMS enviado');
+      return { ok: true };
     }
 
-    if (!to) {
-      throw new Error('Número de telefone é obrigatório');
-    }
-
-    const formattedTo = _formatE164_(to);
-
-    if (!formattedTo.startsWith('+55') || formattedTo.length < 13) {
-      throw new Error('Número de telefone brasileiro inválido: ' + formattedTo);
-    }
-
-    Logger.log('📱 Enviando SMS para: ' + formattedTo);
-    Logger.log('📝 Conteúdo: ' + body.substring(0, 50) + '...');
-
-    const sid = _getProp_('TWILIO_SID');
-    const token = _getProp_('TWILIO_TOKEN');
-    const from = _getProp_('TWILIO_FROM');
-
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
-
-    const payload = {
-      To: formattedTo,
-      From: from,
-      Body: body
-    };
-
-    const options = {
-      method: 'POST',
-      payload: payload,
-      muteHttpExceptions: true,
-      headers: {
-        Authorization: 'Basic ' + Utilities.base64Encode(sid + ':' + token),
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      timeout: 30000
-    };
-
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    const responseText = response.getContentText();
-
-    Logger.log('📡 Resposta Twilio - Código: ' + responseCode);
-
-    if (responseCode >= 200 && responseCode < 300) {
-      const responseData = JSON.parse(responseText);
-      Logger.log('✅ SMS enviado com sucesso - SID: ' + responseData.sid);
-      return {
-        ok: true,
-        sid: responseData.sid,
-        status: responseData.status
-      };
-    } else {
-      Logger.log('❌ Erro Twilio: ' + responseText);
-      let errorMessage = `Twilio HTTP ${responseCode}`;
-      try {
-        const errorData = JSON.parse(responseText);
-        errorMessage += ` - ${errorData.message || errorData.code || 'Erro desconhecido'}`;
-      } catch (e) {
-        errorMessage += ` - ${responseText.substring(0, 100)}`;
-      }
-      return {
-        ok: false,
-        error: errorMessage,
-        responseCode: responseCode
-      };
-    }
-
-  } catch (error) {
-    Logger.log('❌ Erro crítico ao enviar SMS: ' + error.toString());
-    Logger.log('📞 Stack: ' + error.stack);
-
-    return {
-      ok: false,
-      error: 'Erro de conexão: ' + error.toString()
-    };
+    const errorMsg = 'Twilio HTTP ' + code + ': ' + res.getContentText();
+    Logger.log('❌ ' + errorMsg);
+    return { ok: false, error: errorMsg };
+  } catch (e) {
+    Logger.log('❌ Erro SMS: ' + e.toString());
+    return { ok: false, error: e.toString() };
   }
 }
-
 function _pickEmailFromRow_(headers, row) {
   const colMap = _colMap_(headers);
 
