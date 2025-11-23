@@ -17,36 +17,50 @@ export default function InterviewCandidatesList() {
     loadInterviewers();
   }, []);
 
-  async function loadInterviewCandidates() {
-    try {
-      setLoading(true);
-      const { googleSheetsService } = await import('../services/googleSheets');
-
-      const result = await googleSheetsService.getInterviewCandidates();
-
-      if (!result.success) {
-        console.error('Erro:', result.error);
-        alert(`Erro ao carregar candidatos: ${result.error}`);
-        return;
-      }
-
-      let candidatesData: Candidate[] = [];
-      if (Array.isArray(result.data)) {
-        candidatesData = result.data;
-      } else if (result.data && typeof result.data === 'object') {
-        if (Array.isArray((result.data as any).candidates)) {
-          candidatesData = (result.data as any).candidates;
-        }
-      }
-
-      setCandidates(candidatesData);
-    } catch (error) {
-      console.error('Erro ao carregar candidatos para entrevista:', error);
-      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setLoading(false);
-    }
+  async function handleAllocate() {
+  if (!selectedInterviewer) {
+    alert('Selecione um entrevistador');
+    return;
   }
+
+  if (selectedCandidates.size === 0) {
+    alert('Selecione pelo menos um candidato');
+    return;
+  }
+
+  try {
+    setAllocating(true);
+    const { googleSheetsService } = await import('../services/googleSheets');
+
+    // Converte para array de IDs/registration_numbers
+    const candidateIds = Array.from(selectedCandidates)
+      .map(id => {
+        const candidate = candidates.find(c => c.id === id);
+        return candidate?.registration_number || id;
+      });
+
+    // CORREÇÃO: Passa como objeto com as propriedades que a função espera
+    const result = await googleSheetsService.allocateToInterviewer({
+      candidateIds: candidateIds.join(','), // Converte array para string
+      interviewerEmail: selectedInterviewer,
+      adminEmail: user?.email || 'admin'
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Erro ao alocar candidatos');
+    }
+
+    alert(`${selectedCandidates.size} candidato(s) alocado(s) para entrevista com sucesso!`);
+    setSelectedCandidates(new Set());
+    setSelectedInterviewer('');
+    loadInterviewCandidates();
+  } catch (error) {
+    console.error('Erro ao alocar candidatos:', error);
+    alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  } finally {
+    setAllocating(false);
+  }
+}
 
   async function loadInterviewers() {
     try {
