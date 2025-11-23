@@ -175,15 +175,16 @@ class GoogleSheetsService {
     return this.makeRequest('getInterviewerCandidates', { interviewerEmail }, 'GET');
   }
 
-  async allocateToInterviewer(
-    candidateIds: string[],
-    interviewerEmail: string,
-    adminEmail: string
-  ): Promise<GoogleSheetsResponse> {
+  // ✅ CORREÇÃO: Agora recebe um objeto em vez de parâmetros separados
+  async allocateToInterviewer(params: {
+    candidateIds: string[];
+    interviewerEmail: string;
+    adminEmail: string;
+  }): Promise<GoogleSheetsResponse> {
     return this.makeRequest('allocateToInterviewer', {
-      candidateIds: candidateIds.join(','),
-      interviewerEmail,
-      adminEmail
+      candidateIds: params.candidateIds.join(','),
+      interviewerEmail: params.interviewerEmail,
+      adminEmail: params.adminEmail
     }, 'POST');
   }
 
@@ -200,7 +201,6 @@ class GoogleSheetsService {
   }
 
   async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
-    // ⚠️ CORREÇÃO CRÍTICA: Usar POST para dados grandes da avaliação
     return this.makeRequest('saveInterviewEvaluation', evaluation, 'POST');
   }
 
@@ -298,4 +298,3 @@ export async function testSaveEvaluation(candidateId: string, interviewerEmail: 
     return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
   }
 }
-
