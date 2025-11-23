@@ -38,17 +38,17 @@ export default function InterviewEvaluationForm({
   const [resultado, setResultado] = useState<'Classificado' | 'Desclassificado'>('Classificado');
 
   const calculateTotal = () => {
-  // Seção 1: máximo 20 pontos
-  const secao1 = (formacao_adequada + graduacoes_competencias) * 2;
-
-  // Seção 2: máximo 30 pontos
-  const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza) * 2;
-
+  // Seção 1: máximo 10 pontos (ao invés de 20)
+  const secao1 = (formacao_adequada + graduacoes_competencias); // Remove o * 2
+  
+  // Seção 2: máximo 15 pontos (ao invés de 30)
+  const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza); // Remove o * 2
+  
   const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia;
   const secao4 = residencia;
-
-  // Seção 5: máximo 30 pontos
-  const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis) * 2;
+  
+  // Seção 5: máximo 15 pontos (ao invés de 30)
+  const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis); // Remove o * 2
 
   return {
     secao1,
@@ -120,20 +120,8 @@ export default function InterviewEvaluationForm({
           <div>
             <h2 className="text-xl font-bold text-gray-800">Avaliação de Entrevista</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {candidate.NOMECOMPLETO} - {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
+              {candidate.NOMECOMPLETO} - {candidate.CARGOPRETENDIDO}
             </p>
-            <div className="flex gap-4 mt-2 text-sm text-gray-600">
-              {(candidate.ACQUA || candidate.ACQUA) && (
-                <span>
-                  <span className="font-medium">ACQUA:</span> {candidate.ACQUA || candidate.acqua}
-                </span>
-              )}
-              {(candidate.UNIDADE || candidate.unidade) && (
-                <span>
-                  <span className="font-medium">Unidade:</span> {candidate.UNIDADE || candidate.unidade}
-                </span>
-              )}
-            </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
@@ -153,16 +141,10 @@ export default function InterviewEvaluationForm({
                 <span className="font-medium">CPF:</span> {candidate.CPF}
               </div>
               <div>
-                <span className="font-medium">Cargos:</span> {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
+                <span className="font-medium">Cargo:</span> {candidate.CARGOPRETENDIDO}
               </div>
               <div>
                 <span className="font-medium">PCD:</span> {candidate.VAGAPCD === 'Sim' ? 'Sim' : 'Não'}
-              </div>
-              <div>
-                <span className="font-medium">Trabalhou no Inst. Acqua? </span> {candidate.ACQUA}
-              </div>
-              <div>
-                <span className="font-medium">Unidade:</span> {candidate.UNIDADE}
               </div>
             </div>
           </div>
@@ -540,3 +522,4 @@ export default function InterviewEvaluationForm({
     </div>
   );
 }
+
