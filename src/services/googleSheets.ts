@@ -21,7 +21,6 @@ class GoogleSheetsService {
       };
 
       if (method === 'POST') {
-        // POST com JSON no body
         options.headers = {
           ...options.headers,
           'Content-Type': 'application/json',
@@ -31,7 +30,6 @@ class GoogleSheetsService {
           ...params
         });
       } else {
-        // GET com query parameters
         const queryParams = new URLSearchParams();
         Object.keys(params).forEach(key => {
           if (params[key] !== undefined && params[key] !== null) {
@@ -175,7 +173,7 @@ class GoogleSheetsService {
     return this.makeRequest('getInterviewerCandidates', { interviewerEmail }, 'GET');
   }
 
-  // ✅ CORREÇÃO: Agora recebe um objeto em vez de parâmetros separados
+  // ✅ CORREÇÃO: Função corrigida para receber objeto
   async allocateToInterviewer(params: {
     candidateIds: string[];
     interviewerEmail: string;
