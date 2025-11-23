@@ -150,15 +150,19 @@ export const googleSheetsService = {
     return makeRequest('getInterviewers');
   },
 
-  async allocateToInterviewer(
-    candidateIds: string,
-    interviewerEmail: string,
-    adminEmail: string
-  ): Promise<GoogleSheetsResponse> {
+  async allocateToInterviewer(params: {
+    candidateIds: string[] | string;
+    interviewerEmail: string;
+    adminEmail: string;
+  }): Promise<GoogleSheetsResponse> {
+    const candidateIdsString = Array.isArray(params.candidateIds)
+      ? params.candidateIds.join(',')
+      : params.candidateIds;
+
     return makeRequest('allocateToInterviewer', {
-      candidateIds,
-      interviewerEmail,
-      adminEmail
+      candidateIds: candidateIdsString,
+      interviewerEmail: params.interviewerEmail,
+      adminEmail: params.adminEmail
     });
   },
 
