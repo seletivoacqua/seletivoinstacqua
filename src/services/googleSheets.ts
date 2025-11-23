@@ -287,12 +287,16 @@ export const googleSheetsService = {
   },
 
   async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
-    const result = await makeRequest('saveInterviewEvaluation', evaluation, { cache: false, deduplicate: false });
+    console.log('🔄 saveInterviewEvaluation - Usando POST para enviar dados');
+    const result = await makePostRequest('saveInterviewEvaluation', evaluation);
 
     if (result.success) {
+      console.log('✅ Avaliação salva - Invalidando cache');
       cacheService.invalidatePattern(/getInterviewerCandidates/);
       cacheService.invalidatePattern(/getInterviewCandidates/);
       cacheService.invalidatePattern(/getReportStats/);
+    } else {
+      console.error('❌ Falha ao salvar avaliação:', result.error);
     }
 
     return result;
