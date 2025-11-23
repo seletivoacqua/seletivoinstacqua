@@ -14,10 +14,7 @@ async function makeRequest(action: string, params: any = {}): Promise<GoogleShee
 
     const response = await fetch(url, {
       method: 'GET',
-      mode: 'cors',
-      headers: {
-        'Accept': 'application/json'
-      }
+      redirect: 'follow'
     });
 
     if (!response.ok) {
@@ -194,3 +191,4 @@ export const googleSheetsService = {
     return makeRequest('getAnalysts');
   }
 };
+
