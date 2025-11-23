@@ -156,33 +156,7 @@ export const googleSheetsService = {
   },
 
   async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
-    try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'cors',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'saveInterviewEvaluation',
-          ...evaluation,
-          impressao_perfil: (evaluation.impressao_perfil || '').substring(0, 2000)
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Erro ao salvar avaliação:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro ao salvar'
-      };
-    }
+    return makeRequest('saveInterviewEvaluation', evaluation);
   },
 
   async getReportStats(): Promise<GoogleSheetsResponse> {
