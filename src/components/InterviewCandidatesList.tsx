@@ -6,13 +6,11 @@ import { useAuth } from '../contexts/AuthContext';
 export default function InterviewCandidatesList() {
   const { user } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [allocating, setAllocating] = useState(false);
   const [interviewers, setInterviewers] = useState<any[]>([]);
   const [selectedInterviewer, setSelectedInterviewer] = useState('');
-  const [searchName, setSearchName] = useState('');
 
   useEffect(() => {
     loadInterviewCandidates();
@@ -42,7 +40,6 @@ export default function InterviewCandidatesList() {
       }
 
       setCandidates(candidatesData);
-      setFilteredCandidates(candidatesData);
     } catch (error) {
       console.error('Erro ao carregar candidatos para entrevista:', error);
       alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -50,19 +47,6 @@ export default function InterviewCandidatesList() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (searchName.trim() === '') {
-      setFilteredCandidates(candidates);
-    } else {
-      const searchLower = searchName.toLowerCase();
-      const filtered = candidates.filter(c =>
-        (c.NOMECOMPLETO?.toLowerCase().includes(searchLower)) ||
-        (c.NOMESOCIAL?.toLowerCase().includes(searchLower))
-      );
-      setFilteredCandidates(filtered);
-    }
-  }, [searchName, candidates]);
 
   async function loadInterviewers() {
     try {
@@ -88,10 +72,10 @@ export default function InterviewCandidatesList() {
   }
 
   function toggleAll() {
-    if (selectedCandidates.size === filteredCandidates.length) {
+    if (selectedCandidates.size === candidates.length) {
       setSelectedCandidates(new Set());
     } else {
-      setSelectedCandidates(new Set(filteredCandidates.map(c => c.id)));
+      setSelectedCandidates(new Set(candidates.map(c => c.id)));
     }
   }
 
@@ -159,22 +143,13 @@ export default function InterviewCandidatesList() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex-1">
+        <div>
           <h2 className="text-2xl font-bold text-gray-800">Candidatos para Entrevista</h2>
           <p className="text-sm text-gray-600 mt-1">
             {selectedCandidates.size > 0
               ? `${selectedCandidates.size} candidato(s) selecionado(s)`
-              : `${filteredCandidates.length} de ${candidates.length} candidato(s) aguardando alocação`}
+              : `${candidates.length} candidato(s) aguardando alocação`}
           </p>
-          <div className="mt-3 max-w-md">
-            <input
-              type="text"
-              placeholder="Buscar por nome..."
-              value={searchName}
-              onChange={(e) => setSearchName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
         </div>
 
         {selectedCandidates.size > 0 && (
@@ -214,7 +189,7 @@ export default function InterviewCandidatesList() {
               <th className="px-4 py-3 text-left">
                 <input
                   type="checkbox"
-                  checked={selectedCandidates.size === filteredCandidates.length && filteredCandidates.length > 0}
+                  checked={selectedCandidates.size === candidates.length && candidates.length > 0}
                   onChange={toggleAll}
                   className="rounded border-gray-300"
                 />
@@ -240,7 +215,7 @@ export default function InterviewCandidatesList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredCandidates.map((candidate) => {
+            {candidates.map((candidate) => {
               const email = (candidate as any).EMAIL || (candidate as any).Email || (candidate as any).email;
               const telefone = (candidate as any).TELEFONE || (candidate as any).Telefone || (candidate as any).telefone;
 
@@ -266,7 +241,7 @@ export default function InterviewCandidatesList() {
                     {candidate.NOMESOCIAL || '-'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
+                    {candidate.CARGOPRETENDIDO || 'Não informado'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 font-mono">
                     {candidate.CPF || 'Não informado'}
@@ -286,3 +261,4 @@ export default function InterviewCandidatesList() {
     </div>
   );
 }
+
