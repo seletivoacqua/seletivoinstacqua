@@ -438,14 +438,28 @@ export default function InterviewEvaluationForm({
             <div className="border-b pb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 6. Coloque sua impressão sobre o perfil
+                <span className="text-xs text-gray-500 ml-2">
+                  ({impressao_perfil.length}/5000 caracteres)
+                </span>
               </label>
               <textarea
                 value={impressao_perfil}
-                onChange={(e) => setImpressaoPerfil(e.target.value)}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.length <= 5000) {
+                    setImpressaoPerfil(text);
+                  }
+                }}
                 rows={4}
+                maxLength={5000}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Descreva sua impressão geral sobre o candidato..."
+                placeholder="Descreva sua impressão geral sobre o candidato... (máximo 5000 caracteres)"
               />
+              {impressao_perfil.length >= 4500 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Atenção: Você está próximo do limite de caracteres
+                </p>
+              )}
             </div>
 
             <div>
