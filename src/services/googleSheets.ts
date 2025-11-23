@@ -8,6 +8,7 @@ interface GoogleSheetsResponse {
 }
 
 class GoogleSheetsService {
+  // Função principal para lidar com CORS
   private async makeRequest(action: string, params: any = {}, method: 'GET' | 'POST' = 'GET'): Promise<GoogleSheetsResponse> {
     try {
       console.log(`📤 ${method} ${action}:`, params);
@@ -17,14 +18,13 @@ class GoogleSheetsService {
         method: method,
         headers: {
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
+        mode: 'cors' as RequestMode,
+        credentials: 'omit' as RequestCredentials
       };
 
       if (method === 'POST') {
-        options.headers = {
-          ...options.headers,
-          'Content-Type': 'application/json',
-        };
         options.body = JSON.stringify({
           action,
           ...params
@@ -40,7 +40,23 @@ class GoogleSheetsService {
         url = `${url}?${queryParams.toString()}`;
       }
 
-      const response = await fetch(url, options);
+      // Primeiro, tentar a requisição normal
+      let response;
+      try {
+        console.log(`🔗 Tentando requisição para: ${url}`);
+        response = await fetch(url, options);
+      } catch (fetchError) {
+        console.log('❌ Erro no fetch, tentando fallback...', fetchError);
+        
+        // Fallback: usar proxy CORS se disponível
+        if (method === 'GET') {
+          const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
+          console.log(`🔄 Usando proxy CORS: ${proxyUrl}`);
+          response = await fetch(proxyUrl, options);
+        } else {
+          throw fetchError;
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -245,6 +261,15 @@ class GoogleSheetsService {
   async testConnection(): Promise<GoogleSheetsResponse> {
     return this.makeRequest('test', {}, 'GET');
   }
+
+  // Nova função para testar CORS especificamente
+  async testCors(): Promise<GoogleSheetsResponse> {
+    return this.makeRequest('testCors', {}, 'GET');
+  }
+
+  async testAllFunctions(): Promise<GoogleSheetsResponse> {
+    return this.makeRequest('testAll', {}, 'GET');
+  }
 }
 
 // Instância única do serviço
@@ -260,6 +285,20 @@ export async function testGoogleSheetsConnection() {
     return result;
   } catch (error) {
     console.error('💥 Erro no teste de conexão:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
+  }
+}
+
+// Função para testar CORS especificamente
+export async function testCorsConnection() {
+  console.log('🌐 Testando CORS...');
+  
+  try {
+    const result = await googleSheetsService.testCors();
+    console.log('🔗 Resultado do teste CORS:', result);
+    return result;
+  } catch (error) {
+    console.error('💥 Erro no teste CORS:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
   }
 }
