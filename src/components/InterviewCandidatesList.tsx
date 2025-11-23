@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Loader2, UserPlus } from 'lucide-react';
+import { Calendar, Loader2, UserPlus, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import type { Candidate } from '../types/candidate';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,25 +13,24 @@ export default function InterviewCandidatesList() {
   const [interviewers, setInterviewers] = useState<any[]>([]);
   const [selectedInterviewer, setSelectedInterviewer] = useState('');
   const [searchName, setSearchName] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0); // 🔄 Adicionado para forçar atualização
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
+  // 🔄 Recarregar quando lastUpdate mudar
   useEffect(() => {
     loadInterviewCandidates();
     loadInterviewers();
-  }, [refreshKey]); // 🔄 Recarregar quando refreshKey mudar
+  }, [lastUpdate]);
 
-  async function loadInterviewCandidates() {
+  const loadInterviewCandidates = async () => {
     try {
       setLoading(true);
       console.log('🔄 Carregando candidatos para entrevista...');
       
       const { googleSheetsService } = await import('../services/googleSheets');
-
       const result = await googleSheetsService.getInterviewCandidates();
 
       if (!result.success) {
-        console.error('❌ Erro ao carregar:', result.error);
-        alert(`Erro ao carregar candidatos: ${result.error}`);
+        console.error('❌ Erro:', result.error);
         return;
       }
 
@@ -39,21 +38,18 @@ export default function InterviewCandidatesList() {
       if (Array.isArray(result.data)) {
         candidatesData = result.data;
       } else if (result.data && typeof result.data === 'object') {
-        if (Array.isArray((result.data as any).candidates)) {
-          candidatesData = (result.data as any).candidates;
-        }
+        candidatesData = (result.data as any).candidates || [];
       }
 
       console.log(`✅ ${candidatesData.length} candidatos carregados`);
       setCandidates(candidatesData);
       setFilteredCandidates(candidatesData);
     } catch (error) {
-      console.error('❌ Erro ao carregar candidatos para entrevista:', error);
-      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      console.error('❌ Erro ao carregar:', error);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     if (searchName.trim() === '') {
@@ -70,15 +66,11 @@ export default function InterviewCandidatesList() {
 
   async function loadInterviewers() {
     try {
-      console.log('🔄 Carregando entrevistadores...');
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.getInterviewers();
 
       if (result.success && Array.isArray(result.data)) {
-        console.log(`✅ ${result.data.length} entrevistadores carregados`);
         setInterviewers(result.data);
-      } else {
-        console.warn('⚠️ Nenhum entrevistador encontrado');
       }
     } catch (error) {
       console.error('❌ Erro ao carregar entrevistadores:', error);
@@ -116,11 +108,8 @@ export default function InterviewCandidatesList() {
 
     try {
       setAllocating(true);
-      console.log(`📤 Alocando ${selectedCandidates.size} candidatos para ${selectedInterviewer}...`);
-      
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      // 🔄 Converter IDs para registration numbers
       const candidateIds = Array.from(selectedCandidates)
         .map(id => {
           const candidate = candidates.find(c => c.id === id);
@@ -128,8 +117,6 @@ export default function InterviewCandidatesList() {
         })
         .filter(Boolean)
         .join(',');
-
-      console.log('📋 Candidatos a alocar:', candidateIds);
 
       const result = await googleSheetsService.allocateToInterviewer(
         candidateIds,
@@ -141,16 +128,24 @@ export default function InterviewCandidatesList() {
         throw new Error(result.error || 'Erro ao alocar candidatos');
       }
 
-      console.log('✅ Candidatos alocados com sucesso:', result);
-      
       alert(`${selectedCandidates.size} candidato(s) alocado(s) para entrevista com sucesso!`);
       
-      // 🔄 CORREÇÃO CRÍTICA: Limpar seleções e forçar recarregamento
+      // 🔄 ATUALIZAR STATUS LOCALMENTE - não recarregar toda a lista
+      setCandidates(prevCandidates => 
+        prevCandidates.map(candidate => {
+          if (selectedCandidates.has(candidate.id)) {
+            return {
+              ...candidate,
+              entrevistador: selectedInterviewer,
+              status_entrevista: 'Aguardando Avaliação'
+            };
+          }
+          return candidate;
+        })
+      );
+      
       setSelectedCandidates(new Set());
       setSelectedInterviewer('');
-      
-      // 🔄 Forçar atualização da lista
-      setRefreshKey(prev => prev + 1);
       
     } catch (error) {
       console.error('❌ Erro ao alocar candidatos:', error);
@@ -160,11 +155,22 @@ export default function InterviewCandidatesList() {
     }
   }
 
-  // 🔄 Função para recarregar manualmente
-  async function handleRefresh() {
-    console.log('🔄 Recarregando manualmente...');
-    await loadInterviewCandidates();
-  }
+  // 🔄 Função para forçar atualização do status
+  const handleRefresh = () => {
+    console.log('🔄 Forçando atualização de status...');
+    setLastUpdate(new Date());
+  };
+
+  // 🔄 Função para atualizar status individual
+  const updateCandidateStatus = (candidateId: string, newStatus: string) => {
+    setCandidates(prevCandidates =>
+      prevCandidates.map(candidate =>
+        candidate.id === candidateId
+          ? { ...candidate, status_entrevista: newStatus }
+          : candidate
+      )
+    );
+  };
 
   if (loading) {
     return (
@@ -185,15 +191,15 @@ export default function InterviewCandidatesList() {
               onClick={handleRefresh}
               className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-2"
             >
-              <Loader2 className="w-4 h-4" />
-              Atualizar
+              <RefreshCw className="w-4 h-4" />
+              Atualizar Status
             </button>
           </div>
           
           <p className="text-sm text-gray-600 mb-3">
             {selectedCandidates.size > 0
               ? `${selectedCandidates.size} candidato(s) selecionado(s)`
-              : `${filteredCandidates.length} de ${candidates.length} candidato(s) aguardando alocação`}
+              : `${filteredCandidates.length} candidato(s) em entrevista`}
           </p>
           
           <div className="flex gap-4">
@@ -243,14 +249,6 @@ export default function InterviewCandidatesList() {
         <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg border-2 border-dashed border-gray-300">
           <Calendar className="w-16 h-16 text-gray-300 mb-4" />
           <p className="text-gray-500 text-lg mb-2">Nenhum candidato para entrevista</p>
-          <p className="text-gray-400 text-sm">Candidatos classificados na triagem aparecerão aqui</p>
-          <button
-            onClick={handleRefresh}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Loader2 className="w-4 h-4" />
-            Recarregar
-          </button>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -269,10 +267,13 @@ export default function InterviewCandidatesList() {
                   Nome Completo
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Nome Social
+                  Status Entrevista
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                  Cargo Pretendido
+                  Entrevistador
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                  Cargo
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                   CPF
@@ -289,6 +290,24 @@ export default function InterviewCandidatesList() {
               {filteredCandidates.map((candidate) => {
                 const email = (candidate as any).EMAIL || (candidate as any).Email || (candidate as any).email;
                 const telefone = (candidate as any).TELEFONE || (candidate as any).Telefone || (candidate as any).telefone;
+                const statusEntrevista = candidate.status_entrevista || (candidate as any).status_entrevista || 'Não alocado';
+                const entrevistador = candidate.entrevistador || (candidate as any).entrevistador || '';
+
+                const getStatusBadge = (status: string) => {
+                  switch (status) {
+                    case 'Aguardando':
+                      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Aguardando</span>;
+                    case 'Avaliado':
+                      return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Avaliado
+                      </span>;
+                    case 'Em Andamento':
+                      return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">Em Andamento</span>;
+                    default:
+                      return <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">{status}</span>;
+                  }
+                };
 
                 return (
                   <tr
@@ -308,8 +327,11 @@ export default function InterviewCandidatesList() {
                     <td className="px-4 py-3 text-sm text-gray-800 font-medium">
                       {candidate.NOMECOMPLETO || 'Não informado'}
                     </td>
+                    <td className="px-4 py-3 text-sm">
+                      {getStatusBadge(statusEntrevista)}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {candidate.NOMESOCIAL || '-'}
+                      {entrevistador || 'Não atribuído'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
