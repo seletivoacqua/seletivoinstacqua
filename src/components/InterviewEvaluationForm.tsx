@@ -37,18 +37,17 @@ export default function InterviewEvaluationForm({
   const [impressao_perfil, setImpressaoPerfil] = useState('');
   const [resultado, setResultado] = useState<'Classificado' | 'Desclassificado'>('Classificado');
 
+
   const calculateTotal = () => {
-  // Seção 1: máximo 10 pontos (ao invés de 20)
-  const secao1 = (formacao_adequada + graduacoes_competencias); // Remove o * 2
+  // 🚨 CORREÇÃO URGENTE - Manter multiplicação por 2 para compatibilidade
+  const secao1 = (formacao_adequada + graduacoes_competencias) * 2; // ✅ Mantém *2
   
-  // Seção 2: máximo 15 pontos (ao invés de 30)
-  const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza); // Remove o * 2
+  const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza) * 2; // ✅ Mantém *2
   
   const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia;
   const secao4 = residencia;
   
-  // Seção 5: máximo 15 pontos (ao invés de 30)
-  const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis); // Remove o * 2
+  const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis) * 2; // ✅ Mantém *2
 
   return {
     secao1,
