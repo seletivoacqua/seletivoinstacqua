@@ -101,8 +101,8 @@ export default function InterviewEvaluationForm({
         throw new Error(result.error || 'Erro ao salvar avaliação');
       }
 
-      onSave();
       alert('Avaliação salva com sucesso!');
+      onSave();
       onClose();
     } catch (error) {
       console.error('Erro ao salvar avaliação:', error);
