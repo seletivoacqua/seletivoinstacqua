@@ -158,6 +158,12 @@ export default function InterviewEvaluationForm({
               <div>
                 <span className="font-medium">PCD:</span> {candidate.VAGAPCD === 'Sim' ? 'Sim' : 'Não'}
               </div>
+              <div>
+                <span className="font-medium">Trabalho no Inst. Acqua?:</span> {candidate.ACQUA}
+              </div>
+              <div>
+                <span className="font-medium">Unidade:</span> {candidate.UNIDADE}
+              </div>
             </div>
           </div>
 
