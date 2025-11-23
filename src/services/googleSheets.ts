@@ -1,4 +1,4 @@
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwbr9Vm-EJxPTxGEP12UtwWfeKTGU1LsCjnHxQzkY8a9AOOozLNeDKGcflIknT5_FOq/exec';
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxfl0gWq3-dnZmYcz5AIHkpOyC1XdRb8QdaMRQTQZnn5sqyQZvV3qhCevhXuFHGYBk0/exec';
 
 interface GoogleSheetsResponse {
   success: boolean;
@@ -7,81 +7,116 @@ interface GoogleSheetsResponse {
   message?: string;
 }
 
-class GoogleSheetsService {
-  // Função principal para lidar com CORS
-  private async makeRequest(action: string, params: any = {}, method: 'GET' | 'POST' = 'GET'): Promise<GoogleSheetsResponse> {
-    try {
-      console.log(`📤 ${method} ${action}:`, params);
+// Função única para fazer requisições GET (evita preflight CORS)
+async function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
+  try {
+    console.log(`📤 GET ${action}:`, params);
 
-      let url = SCRIPT_URL;
-      let options: RequestInit = {
-        method: method,
+    // Construir URL com query parameters para evitar preflight CORS
+    const queryParams = new URLSearchParams();
+    queryParams.append('action', action);
+    
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null) {
+        queryParams.append(key, String(params[key]));
+      }
+    });
+
+    const url = `${SCRIPT_URL}?${queryParams.toString()}`;
+    console.log(`🔗 URL: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'no-cors', // Modo no-cors para evitar problemas
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    // Em modo no-cors, não podemos ler a resposta, então precisamos de uma abordagem diferente
+    // Vamos tentar com cors primeiro, e se falhar, usar no-cors
+    let actualResponse;
+    try {
+      // Tentar primeiro com cors
+      actualResponse = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json',
         },
-        mode: 'cors' as RequestMode,
-        credentials: 'omit' as RequestCredentials
-      };
-
-      if (method === 'POST') {
-        options.body = JSON.stringify({
-          action,
-          ...params
-        });
-      } else {
-        const queryParams = new URLSearchParams();
-        Object.keys(params).forEach(key => {
-          if (params[key] !== undefined && params[key] !== null) {
-            queryParams.append(key, String(params[key]));
-          }
-        });
-        queryParams.append('action', action);
-        url = `${url}?${queryParams.toString()}`;
-      }
-
-      // Primeiro, tentar a requisição normal
-      let response;
-      try {
-        console.log(`🔗 Tentando requisição para: ${url}`);
-        response = await fetch(url, options);
-      } catch (fetchError) {
-        console.log('❌ Erro no fetch, tentando fallback...', fetchError);
-        
-        // Fallback: usar proxy CORS se disponível
-        if (method === 'GET') {
-          const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
-          console.log(`🔄 Usando proxy CORS: ${proxyUrl}`);
-          response = await fetch(proxyUrl, options);
-        } else {
-          throw fetchError;
-        }
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log(`📥 ${action} response:`, data);
-      return data;
-
-    } catch (error) {
-      console.error(`❌ ${action} error:`, error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido na requisição'
-      };
+      });
+    } catch (corsError) {
+      console.log('❌ CORS falhou, tentando redirecionamento...');
+      // Se CORS falhar, usar uma abordagem alternativa
+      return await makeRequestWithRedirect(action, params);
     }
-  }
 
+    if (!actualResponse.ok) {
+      throw new Error(`HTTP ${actualResponse.status}: ${actualResponse.statusText}`);
+    }
+
+    const data = await actualResponse.json();
+    console.log(`📥 ${action} response:`, data);
+    return data;
+
+  } catch (error) {
+    console.error(`❌ ${action} error:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido na requisição'
+    };
+  }
+}
+
+// Abordagem alternativa usando redirecionamento para evitar CORS
+async function makeRequestWithRedirect(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append('action', action);
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null) {
+        queryParams.append(key, String(params[key]));
+      }
+    });
+
+    // Usar um proxy CORS público como fallback
+    const proxyUrl = 'https://corsproxy.io/';
+    const targetUrl = `${SCRIPT_URL}?${queryParams.toString()}`;
+    const url = `${proxyUrl}?${encodeURIComponent(targetUrl)}`;
+
+    console.log(`🔄 Usando proxy CORS: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+
+  } catch (error) {
+    console.error(`❌ ${action} error com proxy:`, error);
+    return {
+      success: false,
+      error: 'Não foi possível conectar ao servidor. Verifique sua conexão.'
+    };
+  }
+}
+
+class GoogleSheetsService {
   // ==================== CANDIDATOS ====================
   async getCandidates(filters?: any): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getCandidates', filters, 'GET');
+    return makeRequest('getCandidates', filters);
   }
 
   async getCandidatesByStatus(status: 'Classificado' | 'Desclassificado' | 'Revisar'): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getCandidatesByStatus', { status }, 'GET');
+    return makeRequest('getCandidatesByStatus', { status });
   }
 
   async updateCandidateStatus(
@@ -93,33 +128,33 @@ class GoogleSheetsService {
       analystEmail?: string;
     }
   ): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('updateCandidateStatus', {
+    return makeRequest('updateCandidateStatus', {
       registrationNumber,
       statusTriagem,
       ...options
-    }, 'POST');
+    });
   }
 
   async assignCandidates(candidateIds: string[], analystEmail: string, adminEmail: string): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('assignCandidates', {
+    return makeRequest('assignCandidates', {
       candidateIds: candidateIds.join(','),
       analystEmail,
       adminEmail
-    }, 'POST');
+    });
   }
 
   // ==================== TRIAGEM ====================
   async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('saveScreening', screeningData, 'POST');
+    return makeRequest('saveScreening', screeningData);
   }
 
   // ==================== MENSAGENS ====================
   async getMessageTemplates(messageType?: 'email' | 'sms'): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getMessageTemplates', { messageType }, 'GET');
+    return makeRequest('getMessageTemplates', { messageType });
   }
 
   async getDisqualificationReasons(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getDisqualificationReasons', {}, 'GET');
+    return makeRequest('getDisqualificationReasons', {});
   }
 
   async sendMessages(
@@ -130,14 +165,14 @@ class GoogleSheetsService {
     sentBy: string,
     fromAlias?: string
   ): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('sendMessages', {
+    return makeRequest('sendMessages', {
       messageType,
       subject: subject || '',
       content,
       candidateIds: candidateIds.join(','),
       sentBy,
       fromAlias
-    }, 'POST');
+    });
   }
 
   async logMessage(
@@ -148,14 +183,14 @@ class GoogleSheetsService {
     content: string,
     sentBy: string
   ): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('logMessage', {
+    return makeRequest('logMessage', {
       registrationNumber,
       messageType,
       recipient,
       subject,
       content,
       sentBy
-    }, 'POST');
+    });
   }
 
   async updateMessageStatus(
@@ -163,43 +198,43 @@ class GoogleSheetsService {
     messageType: 'email' | 'sms',
     status: string
   ): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('updateMessageStatus', {
+    return makeRequest('updateMessageStatus', {
       registrationNumbers: registrationNumbers.join(','),
       messageType,
       status
-    }, 'POST');
+    });
   }
 
   // ==================== ENTREVISTAS ====================
   async getInterviewCandidates(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getInterviewCandidates', {}, 'GET');
+    return makeRequest('getInterviewCandidates', {});
   }
 
   async moveToInterview(candidateIds: string[]): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('moveToInterview', {
+    return makeRequest('moveToInterview', {
       candidateIds: candidateIds.join(',')
-    }, 'POST');
+    });
   }
 
   async getInterviewers(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getInterviewers', {}, 'GET');
+    return makeRequest('getInterviewers', {});
   }
 
   async getInterviewerCandidates(interviewerEmail: string): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getInterviewerCandidates', { interviewerEmail }, 'GET');
+    return makeRequest('getInterviewerCandidates', { interviewerEmail });
   }
 
-  // ✅ CORREÇÃO: Função corrigida para receber objeto
+  // ✅ Mantém a mesma assinatura de objeto
   async allocateToInterviewer(params: {
     candidateIds: string[];
     interviewerEmail: string;
     adminEmail: string;
   }): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('allocateToInterviewer', {
+    return makeRequest('allocateToInterviewer', {
       candidateIds: params.candidateIds.join(','),
       interviewerEmail: params.interviewerEmail,
       adminEmail: params.adminEmail
-    }, 'POST');
+    });
   }
 
   async updateInterviewStatus(
@@ -207,20 +242,20 @@ class GoogleSheetsService {
     status: string,
     interviewerEmail?: string
   ): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('updateInterviewStatus', {
+    return makeRequest('updateInterviewStatus', {
       registrationNumber,
       status,
       interviewerEmail
-    }, 'POST');
+    });
   }
 
   async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('saveInterviewEvaluation', evaluation, 'POST');
+    return makeRequest('saveInterviewEvaluation', evaluation);
   }
 
   // ==================== RELATÓRIOS ====================
   async getReportStats(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getReportStats', {}, 'GET');
+    return makeRequest('getReportStats', {});
   }
 
   async getReport(
@@ -232,21 +267,21 @@ class GoogleSheetsService {
     if (analystEmail) params.analystEmail = analystEmail;
     if (interviewerEmail) params.interviewerEmail = interviewerEmail;
     
-    return this.makeRequest('getReport', params, 'GET');
+    return makeRequest('getReport', params);
   }
 
   // ==================== USUÁRIOS ====================
   async getAnalysts(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getAnalysts', {}, 'GET');
+    return makeRequest('getAnalysts', {});
   }
 
   async getUserRole(email: string): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getUserRole', { email }, 'GET');
+    return makeRequest('getUserRole', { email });
   }
 
   // ==================== EMAIL ====================
   async getEmailAliases(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('getEmailAliases', {}, 'GET');
+    return makeRequest('getEmailAliases', {});
   }
 
   // ==================== UTILITÁRIOS ====================
@@ -259,23 +294,18 @@ class GoogleSheetsService {
   }
 
   async testConnection(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('test', {}, 'GET');
+    return makeRequest('test', {});
   }
 
-  // Nova função para testar CORS especificamente
   async testCors(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('testCors', {}, 'GET');
-  }
-
-  async testAllFunctions(): Promise<GoogleSheetsResponse> {
-    return this.makeRequest('testAll', {}, 'GET');
+    return makeRequest('testCors', {});
   }
 }
 
 // Instância única do serviço
 export const googleSheetsService = new GoogleSheetsService();
 
-// Função de teste rápido para debug
+// Função de teste rápido
 export async function testGoogleSheetsConnection() {
   console.log('🧪 Testando conexão com Google Sheets...');
   
@@ -285,53 +315,6 @@ export async function testGoogleSheetsConnection() {
     return result;
   } catch (error) {
     console.error('💥 Erro no teste de conexão:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
-  }
-}
-
-// Função para testar CORS especificamente
-export async function testCorsConnection() {
-  console.log('🌐 Testando CORS...');
-  
-  try {
-    const result = await googleSheetsService.testCors();
-    console.log('🔗 Resultado do teste CORS:', result);
-    return result;
-  } catch (error) {
-    console.error('💥 Erro no teste CORS:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
-  }
-}
-
-// Função para testar o salvamento de avaliação
-export async function testSaveEvaluation(candidateId: string, interviewerEmail: string) {
-  console.log('🧪 Testando salvamento de avaliação...');
-  
-  const testEvaluation = {
-    candidateId,
-    interviewerEmail,
-    formacao_adequada: 3,
-    graduacoes_competencias: 4,
-    descricao_processos: 3,
-    terminologia_tecnica: 4,
-    calma_clareza: 5,
-    escalas_flexiveis: 5,
-    adaptabilidade_mudancas: 5,
-    ajustes_emergencia: 5,
-    residencia: 8,
-    resolucao_conflitos: 4,
-    colaboracao_equipe: 5,
-    adaptacao_perfis: 4,
-    impressao_perfil: 'Candidato teste com bom perfil técnico e boa comunicação.',
-    resultado: 'Classificado'
-  };
-
-  try {
-    const result = await googleSheetsService.saveInterviewEvaluation(testEvaluation);
-    console.log('📝 Resultado do teste de avaliação:', result);
-    return result;
-  } catch (error) {
-    console.error('💥 Erro no teste de avaliação:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
   }
 }
