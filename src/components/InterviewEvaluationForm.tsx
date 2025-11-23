@@ -38,36 +38,27 @@ export default function InterviewEvaluationForm({
   const [resultado, setResultado] = useState<'Classificado' | 'Desclassificado'>('Classificado');
 
   const calculateTotal = () => {
-    // 1. Relação entre Formação e Experiências (Máximo 10 pontos)
-    // Cada questão vale 1-5 pontos, soma máxima 10, então dividimos por 2
-    const secao1 = Math.round((formacao_adequada + graduacoes_competencias) / 2); // Máximo 10
+  // 1. Relação entre Formação e Experiências (Máximo 10 pontos)
+  // 2 questões que somadas dão máximo 10 pontos
+  const secao1 = formacao_adequada + graduacoes_competencias;
 
-    // 2. Desenvoltura de Comunicação (Máximo 15 pontos)
-    // 3 questões de 1-5 pontos, soma máxima 15, então mantemos a soma
-    const secao2 = descricao_processos + terminologia_tecnica + calma_clareza; // Máximo 15
+  // 2. Desenvoltura de Comunicação (Máximo 15 pontos)  
+  // 3 questões que somadas dão máximo 15 pontos
+  const secao2 = descricao_processos + terminologia_tecnica + calma_clareza;
 
-    // 3. Disponibilidade e Flexibilidade (Máximo 30 pontos)
-    // 3 questões de 0-10 pontos, soma máxima 30
-    const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia; // Máximo 30
+  // 3. Disponibilidade e Flexibilidade (Máximo 30 pontos)
+  const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia;
 
-    // 4. Residir em Imperatriz - MA (Máximo 10 pontos)
-    const secao4 = residencia; // Máximo 10
+  // 4. Residir em Imperatriz - MA (Máximo 10 pontos)
+  const secao4 = residencia;
 
-    // 5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 15 pontos)
-    // 3 questões de 1-5 pontos, soma máxima 15
-    const secao5 = resolucao_conflitos + colaboracao_equipe + adaptacao_perfis; // Máximo 15
+  // 5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 15 pontos)
+  const secao5 = resolucao_conflitos + colaboracao_equipe + adaptacao_perfis;
 
-    const total = secao1 + secao2 + secao3 + secao4 + secao5; // Máximo 80 pontos
+  const total = secao1 + secao2 + secao3 + secao4 + secao5;
 
-    return {
-      secao1,
-      secao2,
-      secao3,
-      secao4,
-      secao5,
-      total
-    };
-  };
+  return { secao1, secao2, secao3, secao4, secao5, total };
+};
 
   const scores = calculateTotal();
 
