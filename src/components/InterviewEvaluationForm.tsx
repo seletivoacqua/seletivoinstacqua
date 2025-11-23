@@ -122,6 +122,18 @@ export default function InterviewEvaluationForm({
             <p className="text-sm text-gray-600 mt-1">
               {candidate.NOMECOMPLETO} - {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
             </p>
+            <div className="flex gap-4 mt-2 text-sm text-gray-600">
+              {(candidate.ACQUA || candidate.acqua) && (
+                <span>
+                  <span className="font-medium">ACQUA:</span> {candidate.ACQUA || candidate.acqua}
+                </span>
+              )}
+              {(candidate.UNIDADE || candidate.unidade) && (
+                <span>
+                  <span className="font-medium">Unidade:</span> {candidate.UNIDADE || candidate.unidade}
+                </span>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />

@@ -79,4 +79,12 @@ export interface Candidate {
   email_sent?: boolean;
   SMS_SENT?: string | boolean;
   sms_sent?: boolean;
+
+  // Novos campos
+  ACQUA?: string;
+  acqua?: string;
+  UNIDADE?: string;
+  unidade?: string;
+
+  interview_completed_at?: string;
 }

@@ -7,8 +7,10 @@ import InterviewEvaluationForm from './InterviewEvaluationForm';
 export default function InterviewerDashboard() {
   const { user, logout } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [searchName, setSearchName] = useState('');
 
   useEffect(() => {
     loadMyCandidates();
@@ -36,12 +38,26 @@ export default function InterviewerDashboard() {
       }
 
       setCandidates(candidatesData);
+      setFilteredCandidates(candidatesData);
     } catch (error) {
       console.error('Erro ao carregar candidatos:', error);
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (searchName.trim() === '') {
+      setFilteredCandidates(candidates);
+    } else {
+      const searchLower = searchName.toLowerCase();
+      const filtered = candidates.filter(c =>
+        (c.NOMECOMPLETO?.toLowerCase().includes(searchLower)) ||
+        (c.NOMESOCIAL?.toLowerCase().includes(searchLower))
+      );
+      setFilteredCandidates(filtered);
+    }
+  }, [searchName, candidates]);
 
   function handleStartInterview(candidate: Candidate) {
     setSelectedCandidate(candidate);
@@ -109,7 +125,22 @@ export default function InterviewerDashboard() {
             <p className="text-gray-500">Nenhum candidato alocado para entrevista</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div>
+            <div className="mb-4 max-w-md">
+              <input
+                type="text"
+                placeholder="Buscar por nome..."
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            {filteredCandidates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg">
+                <p className="text-gray-500">Nenhum candidato encontrado</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -137,7 +168,7 @@ export default function InterviewerDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {candidates.map((candidate) => (
+                {filteredCandidates.map((candidate) => (
                   <tr key={candidate.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-800 font-medium">
                       {candidate.NOMECOMPLETO || 'Não informado'}
@@ -187,6 +218,8 @@ export default function InterviewerDashboard() {
                 ))}
               </tbody>
             </table>
+            </div>
+            )}
           </div>
         )}
       </div>
