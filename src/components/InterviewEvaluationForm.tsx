@@ -37,27 +37,37 @@ export default function InterviewEvaluationForm({
   const [impressao_perfil, setImpressaoPerfil] = useState('');
   const [resultado, setResultado] = useState<'Classificado' | 'Desclassificado'>('Classificado');
 
-
   const calculateTotal = () => {
-  // 🚨 CORREÇÃO URGENTE - Manter multiplicação por 2 para compatibilidade
-  const secao1 = (formacao_adequada + graduacoes_competencias) * 2; // ✅ Mantém *2
-  
-  const secao2 = (descricao_processos + terminologia_tecnica + calma_clareza) * 2; // ✅ Mantém *2
-  
-  const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia;
-  const secao4 = residencia;
-  
-  const secao5 = (resolucao_conflitos + colaboracao_equipe + adaptacao_perfis) * 2; // ✅ Mantém *2
+    // 1. Relação entre Formação e Experiências (Máximo 10 pontos)
+    // Cada questão vale 1-5 pontos, soma máxima 10, então dividimos por 2
+    const secao1 = Math.round((formacao_adequada + graduacoes_competencias) / 2); // Máximo 10
 
-  return {
-    secao1,
-    secao2,
-    secao3,
-    secao4,
-    secao5,
-    total: secao1 + secao2 + secao3 + secao4 + secao5
+    // 2. Desenvoltura de Comunicação (Máximo 15 pontos)
+    // 3 questões de 1-5 pontos, soma máxima 15, então mantemos a soma
+    const secao2 = descricao_processos + terminologia_tecnica + calma_clareza; // Máximo 15
+
+    // 3. Disponibilidade e Flexibilidade (Máximo 30 pontos)
+    // 3 questões de 0-10 pontos, soma máxima 30
+    const secao3 = escalas_flexiveis + adaptabilidade_mudancas + ajustes_emergencia; // Máximo 30
+
+    // 4. Residir em Imperatriz - MA (Máximo 10 pontos)
+    const secao4 = residencia; // Máximo 10
+
+    // 5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 15 pontos)
+    // 3 questões de 1-5 pontos, soma máxima 15
+    const secao5 = resolucao_conflitos + colaboracao_equipe + adaptacao_perfis; // Máximo 15
+
+    const total = secao1 + secao2 + secao3 + secao4 + secao5; // Máximo 80 pontos
+
+    return {
+      secao1,
+      secao2,
+      secao3,
+      secao4,
+      secao5,
+      total
+    };
   };
-};
 
   const scores = calculateTotal();
 
@@ -151,7 +161,7 @@ export default function InterviewEvaluationForm({
           <div className="space-y-6">
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                1. Relação entre Formação e Experiências (Máximo 10 pontos) - Total: {scores.secao1}
+                1. Relação entre Formação e Experiências (Máximo 10 pontos) - Total: {scores.secao1}/10
               </h3>
               <div className="space-y-4">
                 <div>
@@ -200,7 +210,7 @@ export default function InterviewEvaluationForm({
 
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                2. Desenvoltura de Comunicação (Máximo 15 pontos) - Total: {scores.secao2}
+                2. Desenvoltura de Comunicação (Máximo 15 pontos) - Total: {scores.secao2}/15
               </h3>
               <div className="space-y-4">
                 <div>
@@ -270,7 +280,7 @@ export default function InterviewEvaluationForm({
 
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                3. Disponibilidade e Flexibilidade (Máximo 30 pontos) - Total: {scores.secao3}
+                3. Disponibilidade e Flexibilidade (Máximo 30 pontos) - Total: {scores.secao3}/30
               </h3>
               <div className="space-y-4">
                 <div>
@@ -340,7 +350,7 @@ export default function InterviewEvaluationForm({
 
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                4. Residir em Imperatriz - MA (Máximo 10 pontos) - Total: {scores.secao4}
+                4. Residir em Imperatriz - MA (Máximo 10 pontos) - Total: {scores.secao4}/10
               </h3>
               <div className="space-y-2">
                 {[
@@ -367,7 +377,7 @@ export default function InterviewEvaluationForm({
 
             <div className="border-b pb-4">
               <h3 className="font-bold text-lg text-gray-800 mb-3">
-                5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 15 pontos) - Total: {scores.secao5}
+                5. Relacionamento Interpessoal/Trabalho em Equipe (Máximo 15 pontos) - Total: {scores.secao5}/15
               </h3>
               <div className="space-y-4">
                 <div>
@@ -479,13 +489,13 @@ export default function InterviewEvaluationForm({
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-bold text-lg text-blue-900 mb-2">Pontuação Total: {scores.total}/120</h4>
+              <h4 className="font-bold text-lg text-blue-900 mb-2">Pontuação Total: {scores.total}/80</h4>
               <div className="grid grid-cols-5 gap-2 text-sm text-blue-800">
-                <div>Formação: {scores.secao1}/20</div>
-                <div>Comunicação: {scores.secao2}/30</div>
+                <div>Formação: {scores.secao1}/10</div>
+                <div>Comunicação: {scores.secao2}/15</div>
                 <div>Disponibilidade: {scores.secao3}/30</div>
                 <div>Residência: {scores.secao4}/10</div>
-                <div>Relacionamento: {scores.secao5}/30</div>
+                <div>Relacionamento: {scores.secao5}/15</div>
               </div>
             </div>
           </div>
@@ -521,4 +531,3 @@ export default function InterviewEvaluationForm({
     </div>
   );
 }
-
