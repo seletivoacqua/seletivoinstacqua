@@ -123,7 +123,7 @@ export default function InterviewEvaluationForm({
               {candidate.NOMECOMPLETO} - {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
             </p>
             <div className="flex gap-4 mt-2 text-sm text-gray-600">
-              {(candidate.ACQUA || candidate.acqua) && (
+              {(candidate.ACQUA || candidate.ACQUA) && (
                 <span>
                   <span className="font-medium">ACQUA:</span> {candidate.ACQUA || candidate.acqua}
                 </span>
@@ -159,7 +159,7 @@ export default function InterviewEvaluationForm({
                 <span className="font-medium">PCD:</span> {candidate.VAGAPCD === 'Sim' ? 'Sim' : 'Não'}
               </div>
               <div>
-                <span className="font-medium">Trabalho no Inst. Acqua?:</span> {candidate.ACQUA}
+                <span className="font-medium">Trabalhou no Inst. Acqua? </span> {candidate.ACQUA}
               </div>
               <div>
                 <span className="font-medium">Unidade:</span> {candidate.UNIDADE}
