@@ -72,55 +72,72 @@ export default function InterviewEvaluationForm({
   const scores = calculateTotal();
 
   async function handleSubmit() {
-    if (!impressao_perfil.trim()) {
-      alert('Por favor, preencha a impressão sobre o perfil');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const { googleSheetsService } = await import('../services/googleSheets');
-
-      const evaluation: any = {
-        registrationNumber: candidate.registration_number || candidate.CPF || candidate.id,
-        candidateId: candidate.CPF || candidate.registration_number || candidate.id,
-        formacao_adequada,
-        graduacoes_competencias,
-        descricao_processos,
-        terminologia_tecnica,
-        calma_clareza,
-        escalas_flexiveis,
-        adaptabilidade_mudancas,
-        ajustes_emergencia,
-        residencia,
-        resolucao_conflitos,
-        colaboracao_equipe,
-        adaptacao_perfis,
-        interview_notes: impressao_perfil,
-        impressao_perfil: impressao_perfil,
-        interview_result: resultado,
-        resultado: resultado,
-        interview_score: scores.total,
-        interviewerEmail: user?.email || '',
-        completed_at: new Date().toISOString()
-      };
-
-      const result = await googleSheetsService.saveInterviewEvaluation(evaluation);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao salvar avaliação');
-      }
-
-      alert('Avaliação salva com sucesso!');
-      onSave();
-      onClose();
-    } catch (error) {
-      console.error('Erro ao salvar avaliação:', error);
-      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-    } finally {
-      setSaving(false);
-    }
+  if (!impressao_perfil.trim()) {
+    alert('Por favor, preencha a impressão sobre o perfil');
+    return;
   }
+
+  try {
+    setSaving(true);
+    const { googleSheetsService } = await import('../services/googleSheets');
+
+    const evaluation: any = {
+      // Identificação do candidato
+      registrationNumber: candidate.registration_number || candidate.CPF || candidate.id,
+      candidateId: candidate.CPF || candidate.registration_number || candidate.id,
+      
+      // Dados da avaliação (COMPATÍVEIS COM AS COLUNAS DA PLANILHA)
+      status_entrevista: 'Avaliado', // ✅ NOVO - Coluna obrigatória
+      data_entrevista: new Date().toISOString(), // ✅ NOVO - Coluna obrigatória
+      totalSocre: scores.total, // ✅ CORRIGIDO - Note o typo "totalSocre" (mantido como está na planilha)
+      entrevistador: user?.email || '', // ✅ NOVO - Coluna obrigatória
+      
+      // Campos de avaliação específicos
+      formacao_adequada,
+      graduacoes_competencias,
+      descricao_processos,
+      terminologia_tecnica,
+      calma_clareza,
+      escalas_flexiveis,
+      adaptabilidade_mudancas,
+      ajustes_emergencia,
+      residencia,
+      resolucao_conflitos,
+      colaboracao_equipe,
+      adaptacao_perfis,
+      
+      // Campos de resultado
+      interview_result: resultado,
+      resultado: resultado, // Envia ambos para compatibilidade
+      interview_score: scores.total, // Mantém também o nome correto
+      interview_notes: impressao_perfil,
+      impressao_perfil: impressao_perfil, // Envia ambos para compatibilidade
+      
+      // Metadados
+      interviewerEmail: user?.email || '',
+      completed_at: new Date().toISOString(),
+      entrevistador_at: new Date().toISOString(), // ✅ NOVO
+      entrevistador_by: user?.email || '' // ✅ NOVO
+    };
+
+    console.log('📤 Enviando avaliação:', evaluation); // Para debug
+
+    const result = await googleSheetsService.saveInterviewEvaluation(evaluation);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Erro ao salvar avaliação');
+    }
+
+    alert('Avaliação salva com sucesso!');
+    onSave();
+    onClose();
+  } catch (error) {
+    console.error('Erro ao salvar avaliação:', error);
+    alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+  } finally {
+    setSaving(false);
+  }
+}
 
  return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
