@@ -7,29 +7,43 @@ interface GoogleSheetsResponse {
   message?: string;
 }
 
-async function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
-  try {
-    const queryParams = new URLSearchParams({ action, ...params });
-    const url = `${SCRIPT_URL}?${queryParams.toString()}`;
+function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
+  return new Promise((resolve, reject) => {
+    const callbackName = `jsonp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    (window as any)[callbackName] = (data: any) => {
+      delete (window as any)[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
 
-    const response = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow'
+    const queryParams = new URLSearchParams({
+      action,
+      ...params,
+      callback: callbackName
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error(`Erro na requisição ${action}:`, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro na requisição'
+    const script = document.createElement('script');
+    script.src = `${SCRIPT_URL}?${queryParams.toString()}`;
+    script.onerror = () => {
+      delete (window as any)[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('Erro ao carregar script'));
     };
-  }
+
+    script.timeout = 30000;
+    const timeout = setTimeout(() => {
+      delete (window as any)[callbackName];
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+      reject(new Error('Timeout na requisição'));
+    }, 30000);
+
+    script.onload = () => clearTimeout(timeout);
+    
+    document.body.appendChild(script);
+  });
 }
 
 export const googleSheetsService = {
@@ -191,4 +205,5 @@ export const googleSheetsService = {
     return makeRequest('getAnalysts');
   }
 };
+
 
