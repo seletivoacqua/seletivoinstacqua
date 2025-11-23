@@ -1,74 +1,81 @@
-# 🔧 Correção - Erro "Argumento grande demais"
+# 🔧 Correção - Erro "Argumento grande demais" ao Salvar Entrevista
 
 ## 🔴 Problema
 
+Ao salvar avaliação de entrevista no `InterviewEvaluationForm.tsx`, o sistema retorna:
+
 ```
-ERRO DO SERVIDOR: Falha ao salvar triagem:
-Exception: Argumento grande demais: value
+Erro ao salvar avaliação: Error: Argumento grande demais: value
+at A (index-dPt6mQBI.js:296:2067)
 ```
 
 ### Causa
 
-O Google Apps Script tem um **limite de 32KB por parâmetro** ao fazer logs com `Logger.log()`. O script original tinha logs excessivos que estouravam esse limite.
+A função `saveInterviewEvaluation` no Google Apps Script tenta escrever uma **linha inteira** de dados de uma vez usando `_writeWholeRow_`. Quando a planilha tem muitas colunas ou células com muito texto, o Google Apps Script atinge o limite de tamanho de argumento.
 
-## ✅ Solução Aplicada
+## ✅ Solução
 
-Reduzimos drasticamente os logs na função `saveScreening` mantendo apenas o essencial:
+Substituir `_writeWholeRow_` por atualizações de **células individuais**.
 
-### ❌ Antes (Logs Excessivos)
+### ❌ Antes (Código Problemático)
 
 ```javascript
-function saveScreening(params) {
-  try {
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('📝 INICIANDO saveScreening');
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('📋 Parâmetros recebidos:');
-    Logger.log('   - candidateId: ' + params.candidateId);
-    Logger.log('   - registrationNumber: ' + params.registrationNumber);
-    Logger.log('   - cpf: ' + params.cpf);
-    Logger.log('   - status (RAW): "' + params.status + '"');
-    Logger.log('   - tipo do status: ' + typeof params.status);
-    Logger.log('   - analystEmail: ' + params.analystEmail);
+function saveInterviewEvaluation(params) {
+  const sh = _sheet(SHEET_CANDIDATOS);
+  const headers = _getHeaders_(sh);
+  const col = _colMap_(headers);
 
-    // ... mais 40+ linhas de logs ...
+  // ... buscar linha ...
 
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('✅ TRIAGEM SALVA COM SUCESSO');
-    Logger.log('   - Status final gravado: "' + statusFinal + '"');
-    Logger.log('   - Linha: ' + row);
-    Logger.log('═══════════════════════════════════════');
-  }
+  const lastCol = sh.getLastColumn();
+  const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
+
+  // Atualizar array inteiro com TODOS os dados da linha
+  if (statusEntrevistaCol >= 0) rowVals[statusEntrevistaCol] = 'Avaliado';
+  if (entrevistadorCol >= 0) rowVals[entrevistadorCol] = params.interviewerEmail;
+  // ... mais 15+ atualizações ...
+
+  _writeWholeRow_(sh, row, rowVals); // ❌ ERRO AQUI - argumento muito grande
 }
 ```
 
-### ✅ Depois (Logs Mínimos)
+### ✅ Depois (Código Corrigido)
 
 ```javascript
-function saveScreening(params) {
-  try {
-    Logger.log('saveScreening INICIADO');
-    Logger.log('candidateId: ' + params.candidateId);
-    Logger.log('status: ' + params.status);
+function saveInterviewEvaluation(params) {
+  const sh = _sheet(SHEET_CANDIDATOS);
+  const headers = _getHeaders_(sh);
+  const col = _colMap_(headers);
 
-    // ... lógica de salvamento ...
+  // ... buscar linha ...
 
-    Logger.log('SUCESSO: ' + statusFinal);
+  // Calcular pontuação
+  const totalScore = /* cálculo da pontuação */;
 
-    return {
-      success: true,
-      message: 'Triagem salva com sucesso',
-      candidateId: searchKey,
-      status: statusFinal
-    };
-  } catch (error) {
-    Logger.log('ERRO: ' + error.toString());
+  // ✅ CORREÇÃO: Atualizar células individualmente
+  const updates = [
+    { col: col['status_entrevista'], value: 'Avaliado' },
+    { col: col['entrevistador'], value: params.interviewerEmail || '' },
+    { col: col['interview_score'], value: totalScore },
+    { col: col['interview_notes'], value: (params.impressao_perfil || '').substring(0, 50000) },
+    // ... mais campos ...
+  ];
 
-    return {
-      success: false,
-      error: error.toString()
-    };
+  // Atualizar cada célula individualmente
+  let updatedCount = 0;
+  for (const update of updates) {
+    if (update.col >= 0) {
+      try {
+        sh.getRange(row, update.col + 1).setValue(update.value); // ✅ Célula por célula
+        updatedCount++;
+      } catch (cellError) {
+        Logger.log('⚠️ Erro ao atualizar coluna ' + update.col);
+      }
+    }
   }
+
+  Logger.log('✅ ' + updatedCount + ' células atualizadas com sucesso');
+  _bumpRev_();
 }
 ```
 
@@ -76,110 +83,80 @@ function saveScreening(params) {
 
 | Aspecto | Antes | Depois |
 |---------|-------|--------|
-| Linhas de log | ~50 | ~5 |
-| Tamanho estimado | >50KB | <2KB |
-| Decoração | Muitos emojis e separadores | Mínimo necessário |
-| Template strings | Sim (aumenta tamanho) | Não (concatenação simples) |
-| Performance | Lenta (muitos logs) | Rápida |
+| Método | `_writeWholeRow_` (linha inteira) | `setValue()` (célula por célula) |
+| Tamanho de dados | Toda a linha (~100+ colunas) | Apenas 19 células necessárias |
+| Resiliência | Falha tudo se houver erro | Falha apenas célula problemática |
+| Performance | Pior (lê e escreve tudo) | Melhor (escreve só necessário) |
 
 ## 🚀 Arquivo Corrigido
 
-**Nome:** `google-apps-script-PATCH-SAVESCREEN.js`
+**Nome:** `google-apps-script-PATCH-ENTREVISTA-CELULAS.js`
 **Mudanças:**
-1. Correção da estrutura de resposta (`handleRequest`)
-2. Redução drástica de logs em `saveScreening`
-3. Todas as outras funções intactas
+1. Substituir `_writeWholeRow_` por atualizações individuais
+2. Adicionar array `updates` com todas as células
+3. Loop para atualizar cada célula com tratamento de erro
+4. Limitar tamanho do campo `interview_notes` a 50.000 caracteres
 
-## 📋 Como Implementar
+---
 
-### 1. Copiar Script Corrigido
+## 📋 Passo a Passo - Aplicar Correção
 
-```bash
-# Arquivo:
-google-apps-script-PATCH-SAVESCREEN.js
-```
+### 1. Abrir Google Apps Script
 
-### 2. Substituir no Google Apps Script
+Acesse: https://script.google.com/home/projects/1MH6PG7VJ89MKxvlX1C64fJx7EfmHCU2Qv9WDcICDNSBDazxJfKLGrzN3/edit
 
-1. Acesse: https://script.google.com/
-2. Abra o projeto do script
-3. Selecione TODO o código (Ctrl+A)
-4. Delete
-5. Cole o conteúdo de `google-apps-script-PATCH-SAVESCREEN.js`
-6. Salve (Ctrl+S)
+### 2. Localizar Função
 
-### 3. Fazer Novo Deploy
+Use `Ctrl+F` e procure: `function saveInterviewEvaluation`
 
-1. Implantar > Gerenciar implantações
-2. Editar (ícone lápis) na implantação ativa
-3. Nova versão
-4. Descrição: `Correção logs excessivos + estrutura resposta`
-5. Implantar
-6. URL permanece a mesma
+Deve estar na linha ~1650
 
-### 4. Testar
+### 3. Substituir Função Completa
 
-1. Login como analista
-2. Triagem de candidato
-3. Classificar ou desclassificar
-4. Verificar:
-   - ✅ Modal fecha
-   - ✅ Sem erro "Argumento grande demais"
-   - ✅ Status salvo na planilha
+Copie o código do arquivo `google-apps-script-PATCH-ENTREVISTA-CELULAS.js` e substitua a função inteira.
 
-## 🔍 Logs Esperados
+### 4. Salvar e Testar
 
-### Console do Navegador
-```
-📤 POST Request: saveScreening
-📦 Payload: { action: "saveScreening", ... }
-📡 Response status: 200
-✅ Response data: { success: true, status: "Classificado" }
-```
-
-### Google Apps Script (Execuções)
-```
-saveScreening INICIADO
-candidateId: 918.490.393-72
-status: classificado
-Linha: 15
-SUCESSO: Classificado
-```
+1. Clique em **Salvar projeto** (Ctrl+S)
+2. Não precisa fazer novo deploy (mesmo projeto)
+3. Teste salvando uma avaliação no frontend
 
 ## 💡 Por Que o Erro Ocorria
 
-1. **Logger.log excessivo:** Cada log adiciona ao buffer interno
-2. **Template strings:** `Logger.log(\`texto ${var}\`)` usa mais memória
-3. **Logs decorativos:** Emojis e separadores aumentam tamanho
-4. **Concatenação complexa:** Logs com JSON.stringify de objetos grandes
+1. **Linha inteira lida de uma vez:** `getRange(row, 1, 1, lastCol).getValues()[0]` lê todas as ~100+ colunas
+2. **Array grande modificado:** Modificar array com todos os dados da linha
+3. **Escrita de linha completa:** `_writeWholeRow_` tenta escrever array gigante de volta
+4. **Limite do Google Apps Script:** Parâmetros muito grandes causam erro "Argumento grande demais"
 
 ### Limite do Google Apps Script
 
 ```
-Cada parâmetro em Logger.log() tem limite de 32KB
-Logs acumulados também têm limite de execução
+Google Apps Script tem limites de tamanho para:
+- Parâmetros de função (~50KB)
+- Arrays em setValues()
+- Strings individuais
 ```
 
 ## ⚠️ Boas Práticas
 
-### ✅ FAZER
+### ✅ FAZER (Atualização Eficiente)
 
 ```javascript
-Logger.log('Status: ' + status);
-Logger.log('Linha encontrada: ' + row);
-Logger.log('SUCESSO');
+// Atualizar apenas células necessárias
+sh.getRange(row, col['status_entrevista'] + 1).setValue('Avaliado');
+sh.getRange(row, col['interview_score'] + 1).setValue(totalScore);
+sh.getRange(row, col['interview_notes'] + 1).setValue(notes.substring(0, 50000));
 ```
 
-### ❌ EVITAR
+### ❌ EVITAR (Atualização de Linha Inteira)
 
 ```javascript
-Logger.log('═══════════════════════════════════════');
-Logger.log('📝 INICIANDO OPERAÇÃO SUPER DETALHADA');
-Logger.log('═══════════════════════════════════════');
-Logger.log(`Parâmetros completos: ${JSON.stringify(params, null, 2)}`);
-Logger.log('   - campo1: ' + params.campo1);
-Logger.log('   - campo2: ' + params.campo2);
-// ... 50 linhas de log ...
+// NÃO fazer isso com planilhas grandes
+const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
+rowVals[col1] = value1;
+rowVals[col2] = value2;
+// ... modificar muitos valores ...
+sh.getRange(row, 1, 1, lastCol).setValues([rowVals]); // ❌ Pode falhar
 ```
 
 ## 🎯 Resultado Esperado
@@ -187,47 +164,63 @@ Logger.log('   - campo2: ' + params.campo2);
 Após implementar o script corrigido:
 
 1. ✅ **Erro "Argumento grande demais" resolvido**
-2. ✅ **Triagem salva corretamente na planilha**
-3. ✅ **Status atualizado** ("Classificado"/"Desclassificado")
-4. ✅ **Performance melhorada** (menos overhead de log)
-5. ✅ **Logs mais limpos e objetivos**
+2. ✅ **Avaliação de entrevista salva corretamente**
+3. ✅ **Todos os campos salvos** (pontuação, notas, resultado)
+4. ✅ **Performance melhorada** (escreve apenas células necessárias)
+5. ✅ **Logs mostram células atualizadas** (ex: "19 células atualizadas com sucesso")
 
 ## 📝 Checklist de Verificação
 
-- [ ] Script copiado completamente
-- [ ] Salvo no Google Apps Script
-- [ ] Nova versão implantada
-- [ ] Testado classificar candidato
-- [ ] Testado desclassificar candidato
-- [ ] Status aparece corretamente na planilha
-- [ ] Logs do Apps Script mostram "SUCESSO: Classificado"
+- [ ] Função `saveInterviewEvaluation` localizada no script
+- [ ] Código substituído completamente
+- [ ] Salvo no Google Apps Script (Ctrl+S)
+- [ ] Testado preencher avaliação completa
+- [ ] Testado salvar avaliação
+- [ ] Pontuação calculada corretamente (0-120)
+- [ ] Status "Avaliado" aparece na planilha
+- [ ] Logs mostram "X células atualizadas com sucesso"
 - [ ] Sem erro "Argumento grande demais"
 
 ## 🆘 Se o Erro Persistir
 
 Se ainda houver erro após implementar:
 
-1. **Verifique o deploy:**
-   - Foi criada uma nova versão?
-   - A URL está correta no `.env`?
+1. **Verifique se salvou corretamente:**
+   - A função foi substituída por completo?
+   - Clicou em Salvar (ícone de disquete)?
 
-2. **Limpe o cache:**
+2. **Verifique os logs do Apps Script:**
+   - Vá em "Execuções" no menu lateral
+   - Veja a última execução de `saveInterviewEvaluation`
+   - Procure por mensagem de erro específica
+
+3. **Limpe o cache do navegador:**
    - Feche e reabra o navegador
-   - Limpe cache (Ctrl+Shift+Delete)
+   - Ou limpe cache (Ctrl+Shift+Delete)
 
-3. **Verifique os logs do Apps Script:**
-   - Vá em "Execuções"
-   - Veja qual linha está causando erro
-   - Compartilhe os logs para análise
-
-4. **Teste direto:**
-   ```bash
-   curl -X POST \
-     'https://script.google.com/macros/s/SEU_ID/exec' \
-     -H 'Content-Type: application/json' \
-     -d '{"action":"saveScreening","candidateId":"918.490.393-72","status":"classificado","analystEmail":"teste@email.com"}'
-   ```
+4. **Verifique outras funções:**
+   - Outras funções podem usar `_writeWholeRow_`
+   - Busque no script: `Ctrl+F` → `_writeWholeRow_`
+   - Aplique a mesma correção se necessário
 
 ---
 
-**Nota:** Esta correção elimina logs desnecessários sem afetar a funcionalidade do salvamento.
+## 🔄 Aplicar Correção em Outras Funções
+
+Se encontrar o mesmo erro em outras partes do sistema (triagem, alocação, etc.), aplique o mesmo padrão:
+
+**Substituir:**
+```javascript
+const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
+rowVals[col['campo']] = valor;
+_writeWholeRow_(sh, row, rowVals);
+```
+
+**Por:**
+```javascript
+sh.getRange(row, col['campo'] + 1).setValue(valor);
+```
+
+---
+
+**Nota:** Esta correção otimiza a escrita de dados no Google Sheets, evitando o limite de tamanho de argumento.
