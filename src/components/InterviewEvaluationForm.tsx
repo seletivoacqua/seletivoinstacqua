@@ -122,15 +122,27 @@ export default function InterviewEvaluationForm({
     }
   }
 
-  return (
+ return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8">
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Avaliação de Entrevista</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {candidate.NOMECOMPLETO} - {candidate.CARGOPRETENDIDO}
+              {candidate.NOMECOMPLETO} - {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
             </p>
+            <div className="flex gap-4 mt-2 text-sm text-gray-600">
+              {(candidate.ACQUA || candidate.ACQUA) && (
+                <span>
+                  <span className="font-medium">ACQUA:</span> {candidate.ACQUA || candidate.acqua}
+                </span>
+              )}
+              {(candidate.UNIDADE || candidate.unidade) && (
+                <span>
+                  <span className="font-medium">Unidade:</span> {candidate.UNIDADE || candidate.unidade}
+                </span>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
@@ -150,10 +162,16 @@ export default function InterviewEvaluationForm({
                 <span className="font-medium">CPF:</span> {candidate.CPF}
               </div>
               <div>
-                <span className="font-medium">Cargo:</span> {candidate.CARGOPRETENDIDO}
+                <span className="font-medium">Cargos:</span> {[candidate.CARGOADMIN, candidate.CARGOASSIS].filter(Boolean).join(' | ') || 'Não informado'}
               </div>
               <div>
                 <span className="font-medium">PCD:</span> {candidate.VAGAPCD === 'Sim' ? 'Sim' : 'Não'}
+              </div>
+              <div>
+                <span className="font-medium">Trabalhou no Inst. Acqua? </span> {candidate.ACQUA}
+              </div>
+              <div>
+                <span className="font-medium">Unidade:</span> {candidate.UNIDADE}
               </div>
             </div>
           </div>
