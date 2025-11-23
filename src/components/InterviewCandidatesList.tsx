@@ -213,12 +213,17 @@ export default function InterviewCandidatesList() {
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Telefone
               </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                Entrevistador Alocado
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {candidates.map((candidate) => {
               const email = (candidate as any).EMAIL || (candidate as any).Email || (candidate as any).email;
               const telefone = (candidate as any).TELEFONE || (candidate as any).Telefone || (candidate as any).telefone;
+              const entrevistador = (candidate as any).entrevistador || (candidate as any).Entrevistador;
+              const hasInterviewer = entrevistador && entrevistador.trim() !== '';
 
               return (
                 <tr
@@ -252,6 +257,16 @@ export default function InterviewCandidatesList() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {telefone || 'Não informado'}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {hasInterviewer ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                        <UserPlus className="w-3 h-3" />
+                        {entrevistador}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">Aguardando alocação</span>
+                    )}
                   </td>
                 </tr>
               );
