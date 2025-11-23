@@ -105,6 +105,113 @@ export default function InterviewCandidatesList() {
       const result = await googleSheetsService.allocateToInterviewer({
         candidateIds: candidateIds.join(','), // Converte array para string
         interviewerEmail: selectedInterviewer,
+        adminEmail: user?.email || 'admin'import { useState, useEffect } from 'react';
+import { Calendar, Loader2, UserPlus } from 'lucide-react';
+import type { Candidate } from '../types/candidate';
+import { useAuth } from '../contexts/AuthContext';
+
+export default function InterviewCandidatesList() {
+  const { user } = useAuth();
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [allocating, setAllocating] = useState(false);
+  const [interviewers, setInterviewers] = useState<any[]>([]);
+  const [selectedInterviewer, setSelectedInterviewer] = useState('');
+
+  useEffect(() => {
+    loadInterviewCandidates();
+    loadInterviewers();
+  }, []);
+
+  async function loadInterviewCandidates() {
+    try {
+      setLoading(true);
+      const { googleSheetsService } = await import('../services/googleSheets');
+
+      const result = await googleSheetsService.getInterviewCandidates();
+
+      if (!result.success) {
+        console.error('Erro:', result.error);
+        alert(`Erro ao carregar candidatos: ${result.error}`);
+        return;
+      }
+
+      let candidatesData: Candidate[] = [];
+      if (Array.isArray(result.data)) {
+        candidatesData = result.data;
+      } else if (result.data && typeof result.data === 'object') {
+        if (Array.isArray((result.data as any).candidates)) {
+          candidatesData = (result.data as any).candidates;
+        }
+      }
+
+      setCandidates(candidatesData);
+    } catch (error) {
+      console.error('Erro ao carregar candidatos para entrevista:', error);
+      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadInterviewers() {
+    try {
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getInterviewers();
+
+      if (result.success && Array.isArray(result.data)) {
+        setInterviewers(result.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar entrevistadores:', error);
+    }
+  }
+
+  function toggleCandidate(id: string) {
+    const newSelected = new Set(selectedCandidates);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedCandidates(newSelected);
+  }
+
+  function toggleAll() {
+    if (selectedCandidates.size === candidates.length) {
+      setSelectedCandidates(new Set());
+    } else {
+      setSelectedCandidates(new Set(candidates.map(c => c.id)));
+    }
+  }
+
+  async function handleAllocate() {
+    if (!selectedInterviewer) {
+      alert('Selecione um entrevistador');
+      return;
+    }
+
+    if (selectedCandidates.size === 0) {
+      alert('Selecione pelo menos um candidato');
+      return;
+    }
+
+    try {
+      setAllocating(true);
+      const { googleSheetsService } = await import('../services/googleSheets');
+
+      // Converte para array de IDs/registration_numbers
+      const candidateIds = Array.from(selectedCandidates)
+        .map(id => {
+          const candidate = candidates.find(c => c.id === id);
+          return candidate?.registration_number || id;
+        });
+
+      // ✅ CORREÇÃO: Passa como objeto com as propriedades corretas
+      const result = await googleSheetsService.allocateToInterviewer({
+        candidateIds: candidateIds,
+        interviewerEmail: selectedInterviewer,
         adminEmail: user?.email || 'admin'
       });
 
