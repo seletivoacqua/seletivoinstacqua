@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste ACQUA e UNIDADE</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+      border: 1px solid #dee2e6;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .error {
+      color: #d32f2f;
+      background: #ffebee;
+      border-color: #f44336;
+    }
+    .success {
+      color: #2e7d32;
+      background: #e8f5e9;
+      border-color: #4caf50;
+    }
+    .loading {
+      color: #1976d2;
+    }
+    .field-check {
+      margin: 10px 0;
+      padding: 10px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 5px;
+    }
+    .field-found {
+      background: #d4edda;
+      border-color: #28a745;
+      color: #155724;
+    }
+    .field-missing {
+      background: #f8d7da;
+      border-color: #dc3545;
+      color: #721c24;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-top: 15px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Teste ACQUA e UNIDADE - Verificação de Campos</h1>
+
+    <label>URL do Google Apps Script:</label>
+    <input type="text" id="scriptUrl" placeholder="Cole aqui a URL do seu Google Apps Script">
+
+    <label>Email do Entrevistador (para teste):</label>
+    <input type="text" id="emailEntrevistador" placeholder="email@exemplo.com">
+
+    <div style="margin-top: 20px;">
+      <button onclick="testGetCandidates()">1. Testar getCandidates (Todos os Candidatos)</button>
+      <button onclick="testGetInterviewCandidates()">2. Testar getInterviewCandidates (Aguardando Entrevista)</button>
+      <button onclick="testGetInterviewerCandidates()">3. Testar getInterviewerCandidates (Alocados para Entrevistador)</button>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    function showResult(message, type = '') {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = type;
+      resultDiv.textContent = message;
+    }
+
+    function showLoading(message) {
+      showResult(message, 'loading');
+    }
+
+    function analyzeFields(candidates) {
+      if (!candidates || candidates.length === 0) {
+        return '⚠️ Nenhum candidato retornado para análise\n\n';
+      }
+
+      const firstCandidate = candidates[0];
+      const allFields = Object.keys(firstCandidate);
+
+      let analysis = '📊 ANÁLISE DE CAMPOS RETORNADOS\n';
+      analysis += '═'.repeat(80) + '\n\n';
+
+      analysis += `✅ Total de candidatos: ${candidates.length}\n`;
+      analysis += `✅ Total de campos retornados: ${allFields.length}\n\n`;
+
+      // Verifica campos específicos
+      const fieldsToCheck = [
+        'ACQUA', 'acqua', 'Acqua',
+        'UNIDADE', 'unidade', 'Unidade',
+        'NOMECOMPLETO', 'NOMESOCIAL', 'CPF',
+        'CARGOADMIN', 'CARGOASSIS'
+      ];
+
+      analysis += '🔍 VERIFICAÇÃO DE CAMPOS ESPECÍFICOS:\n';
+      analysis += '─'.repeat(80) + '\n';
+
+      fieldsToCheck.forEach(field => {
+        const exists = allFields.includes(field);
+        const value = firstCandidate[field];
+        const hasValue = value !== undefined && value !== null && value !== '';
+
+        if (exists) {
+          if (hasValue) {
+            analysis += `  ✅ ${field.padEnd(20)} → ENCONTRADO com valor: "${value}"\n`;
+          } else {
+            analysis += `  ⚠️  ${field.padEnd(20)} → ENCONTRADO mas VAZIO\n`;
+          }
+        } else {
+          analysis += `  ❌ ${field.padEnd(20)} → NÃO ENCONTRADO\n`;
+        }
+      });
+
+      analysis += '\n' + '═'.repeat(80) + '\n\n';
+      analysis += '📋 TODOS OS CAMPOS DISPONÍVEIS:\n';
+      analysis += '─'.repeat(80) + '\n';
+
+      allFields.sort().forEach(field => {
+        const value = firstCandidate[field];
+        const preview = value !== null && value !== undefined && value !== ''
+          ? String(value).substring(0, 50)
+          : '(vazio)';
+        analysis += `  • ${field.padEnd(30)} → ${preview}\n`;
+      });
+
+      analysis += '\n' + '═'.repeat(80) + '\n\n';
+
+      // Mostra primeiro candidato completo
+      analysis += '👤 PRIMEIRO CANDIDATO (JSON COMPLETO):\n';
+      analysis += '─'.repeat(80) + '\n';
+      analysis += JSON.stringify(firstCandidate, null, 2);
+
+      return analysis;
+    }
+
+    async function testGetCandidates() {
+      const scriptUrl = document.getElementById('scriptUrl').value.trim();
+      if (!scriptUrl) {
+        alert('Por favor, cole a URL do Google Apps Script');
+        return;
+      }
+
+      try {
+        showLoading('⏳ Buscando candidatos via getCandidates...');
+
+        const url = `${scriptUrl}?action=getCandidates&limit=10`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        let result = '🔵 TESTE: getCandidates\n';
+        result += '═'.repeat(80) + '\n\n';
+
+        if (data.candidates && Array.isArray(data.candidates)) {
+          result += analyzeFields(data.candidates);
+        } else {
+          result += '❌ Erro: Resposta não contém array de candidatos\n\n';
+          result += 'Resposta recebida:\n';
+          result += JSON.stringify(data, null, 2);
+        }
+
+        showResult(result, 'success');
+      } catch (error) {
+        showResult(`❌ Erro: ${error.message}\n\n${error.stack}`, 'error');
+      }
+    }
+
+    async function testGetInterviewCandidates() {
+      const scriptUrl = document.getElementById('scriptUrl').value.trim();
+      if (!scriptUrl) {
+        alert('Por favor, cole a URL do Google Apps Script');
+        return;
+      }
+
+      try {
+        showLoading('⏳ Buscando candidatos aguardando entrevista...');
+
+        const url = `${scriptUrl}?action=getInterviewCandidates`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        let result = '🟢 TESTE: getInterviewCandidates\n';
+        result += '═'.repeat(80) + '\n\n';
+
+        if (data.candidates && Array.isArray(data.candidates)) {
+          result += analyzeFields(data.candidates);
+        } else if (Array.isArray(data)) {
+          result += analyzeFields(data);
+        } else {
+          result += '❌ Erro: Resposta não contém array de candidatos\n\n';
+          result += 'Resposta recebida:\n';
+          result += JSON.stringify(data, null, 2);
+        }
+
+        showResult(result, 'success');
+      } catch (error) {
+        showResult(`❌ Erro: ${error.message}\n\n${error.stack}`, 'error');
+      }
+    }
+
+    async function testGetInterviewerCandidates() {
+      const scriptUrl = document.getElementById('scriptUrl').value.trim();
+      const email = document.getElementById('emailEntrevistador').value.trim();
+
+      if (!scriptUrl) {
+        alert('Por favor, cole a URL do Google Apps Script');
+        return;
+      }
+
+      if (!email) {
+        alert('Por favor, informe o email do entrevistador');
+        return;
+      }
+
+      try {
+        showLoading('⏳ Buscando candidatos do entrevistador...');
+
+        const url = `${scriptUrl}?action=getInterviewerCandidates&interviewerEmail=${encodeURIComponent(email)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        let result = '🟣 TESTE: getInterviewerCandidates\n';
+        result += '═'.repeat(80) + '\n\n';
+        result += `Email do entrevistador: ${email}\n\n`;
+
+        if (data.candidates && Array.isArray(data.candidates)) {
+          result += analyzeFields(data.candidates);
+        } else if (Array.isArray(data)) {
+          result += analyzeFields(data);
+        } else {
+          result += '❌ Erro: Resposta não contém array de candidatos\n\n';
+          result += 'Resposta recebida:\n';
+          result += JSON.stringify(data, null, 2);
+        }
+
+        showResult(result, 'success');
+      } catch (error) {
+        showResult(`❌ Erro: ${error.message}\n\n${error.stack}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
