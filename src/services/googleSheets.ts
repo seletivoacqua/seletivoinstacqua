@@ -7,15 +7,13 @@ interface GoogleSheetsResponse {
   message?: string;
 }
 
-// Função única para fazer requisições GET (evita preflight CORS)
 async function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
   try {
     console.log(`📤 GET ${action}:`, params);
 
-    // Construir URL com query parameters para evitar preflight CORS
     const queryParams = new URLSearchParams();
     queryParams.append('action', action);
-    
+
     Object.keys(params).forEach(key => {
       if (params[key] !== undefined && params[key] !== null) {
         queryParams.append(key, String(params[key]));
@@ -27,35 +25,14 @@ async function makeRequest(action: string, params: any = {}): Promise<GoogleShee
 
     const response = await fetch(url, {
       method: 'GET',
-      mode: 'no-cors', // Modo no-cors para evitar problemas
-      headers: {
-        'Accept': 'application/json',
-      },
+      redirect: 'follow'
     });
 
-    // Em modo no-cors, não podemos ler a resposta, então precisamos de uma abordagem diferente
-    // Vamos tentar com cors primeiro, e se falhar, usar no-cors
-    let actualResponse;
-    try {
-      // Tentar primeiro com cors
-      actualResponse = await fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-    } catch (corsError) {
-      console.log('❌ CORS falhou, tentando redirecionamento...');
-      // Se CORS falhar, usar uma abordagem alternativa
-      return await makeRequestWithRedirect(action, params);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    if (!actualResponse.ok) {
-      throw new Error(`HTTP ${actualResponse.status}: ${actualResponse.statusText}`);
-    }
-
-    const data = await actualResponse.json();
+    const data = await response.json();
     console.log(`📥 ${action} response:`, data);
     return data;
 
@@ -64,47 +41,6 @@ async function makeRequest(action: string, params: any = {}): Promise<GoogleShee
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido na requisição'
-    };
-  }
-}
-
-// Abordagem alternativa usando redirecionamento para evitar CORS
-async function makeRequestWithRedirect(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
-  try {
-    const queryParams = new URLSearchParams();
-    queryParams.append('action', action);
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null) {
-        queryParams.append(key, String(params[key]));
-      }
-    });
-
-    // Usar um proxy CORS público como fallback
-    const proxyUrl = 'https://corsproxy.io/';
-    const targetUrl = `${SCRIPT_URL}?${queryParams.toString()}`;
-    const url = `${proxyUrl}?${encodeURIComponent(targetUrl)}`;
-
-    console.log(`🔄 Usando proxy CORS: ${url}`);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
-
-  } catch (error) {
-    console.error(`❌ ${action} error com proxy:`, error);
-    return {
-      success: false,
-      error: 'Não foi possível conectar ao servidor. Verifique sua conexão.'
     };
   }
 }
@@ -277,6 +213,24 @@ class GoogleSheetsService {
 
   async getUserRole(email: string): Promise<GoogleSheetsResponse> {
     return makeRequest('getUserRole', { email });
+  }
+
+  async getUserByEmail(email: string): Promise<any | null> {
+    const result = await this.getUserRole(email);
+    if (result.success && result.data) {
+      return {
+        id: result.data.email,
+        email: result.data.email,
+        name: result.data.name || result.data.nome || result.data.email,
+        role: result.data.role,
+        active: true
+      };
+    }
+    return null;
+  }
+
+  async getUserById(id: string): Promise<any | null> {
+    return this.getUserByEmail(id);
   }
 
   // ==================== EMAIL ====================
