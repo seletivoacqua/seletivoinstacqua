@@ -7,48 +7,43 @@ interface GoogleSheetsResponse {
   message?: string;
 }
 
-function makeRequest(action: string, params: any = {}): Promise<GoogleSheetsResponse> {
-  return new Promise((resolve, reject) => {
-    const callbackName = `jsonp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    (window as any)[callbackName] = (data: any) => {
-      delete (window as any)[callbackName];
-      document.body.removeChild(script);
-      resolve(data);
-    };
+async function fetchData(action: string, data: any = {}) {
+  console.log('🔍 URL configurada:', SCRIPT_URL);
+  console.log('🔍 Action:', action);
+  console.log('🔍 Data:', data);
 
-    const queryParams = new URLSearchParams({
-      action,
-      ...params,
-      callback: callbackName
+  const params = new URLSearchParams({
+    action,
+    ...Object.entries(data).reduce((acc, [key, value]) => {
+      acc[key] = String(value);
+      return acc;
+    }, {} as Record<string, string>)
+  });
+
+  const url = `${SCRIPT_URL}?${params.toString()}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow'
     });
 
-    const script = document.createElement('script');
-    script.src = `${SCRIPT_URL}?${queryParams.toString()}`;
-    script.onerror = () => {
-      delete (window as any)[callbackName];
-      document.body.removeChild(script);
-      reject(new Error('Erro ao carregar script'));
-    };
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-    script.timeout = 30000;
-    const timeout = setTimeout(() => {
-      delete (window as any)[callbackName];
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-      reject(new Error('Timeout na requisição'));
-    }, 30000);
-
-    script.onload = () => clearTimeout(timeout);
-    
-    document.body.appendChild(script);
-  });
+    const result = await response.json();
+    console.log('✅ Resposta:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Erro na comunicação com Google Apps Script:', error);
+    throw error;
+  }
 }
 
 export const googleSheetsService = {
   async getCandidates(filters?: any): Promise<GoogleSheetsResponse> {
-    return makeRequest('getCandidates', filters);
+    return fetchData('getCandidates', filters);
   },
 
   async updateCandidateStatus(
@@ -60,7 +55,7 @@ export const googleSheetsService = {
       analystEmail?: string;
     }
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('updateCandidateStatus', {
+    return fetchData('updateCandidateStatus', {
       registrationNumber,
       statusTriagem,
       ...options
@@ -69,7 +64,7 @@ export const googleSheetsService = {
 
   async getCandidatesByStatus(status: 'Classificado' | 'Desclassificado' | 'Revisar'): Promise<GoogleSheetsResponse> {
     console.log('📊 getCandidatesByStatus - Status:', status);
-    const result = await makeRequest('getCandidatesByStatus', { status });
+    const result = await fetchData('getCandidatesByStatus', { status });
     console.log('📦 Dados recebidos:', result);
     return result;
   },
@@ -82,7 +77,7 @@ export const googleSheetsService = {
     content: string,
     sentBy: string
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('logMessage', {
+    return fetchData('logMessage', {
       registrationNumber,
       messageType,
       recipient,
@@ -93,11 +88,11 @@ export const googleSheetsService = {
   },
 
   async getDisqualificationReasons(): Promise<GoogleSheetsResponse> {
-    return makeRequest('getDisqualificationReasons');
+    return fetchData('getDisqualificationReasons');
   },
 
   async getMessageTemplates(messageType?: 'email' | 'sms'): Promise<GoogleSheetsResponse> {
-    return makeRequest('getMessageTemplates', { messageType });
+    return fetchData('getMessageTemplates', { messageType });
   },
 
   async sendMessages(
@@ -113,7 +108,7 @@ export const googleSheetsService = {
     console.log('  IDs:', candidateIds);
     console.log('  Alias:', fromAlias);
 
-    const result = await makeRequest('sendMessages', {
+    const result = await fetchData('sendMessages', {
       messageType,
       subject: subject || '',
       content,
@@ -131,7 +126,7 @@ export const googleSheetsService = {
     messageType: 'email' | 'sms',
     status: string
   ): Promise<GoogleSheetsResponse> {
-    return makeRequest('updateMessageStatus', {
+    return fetchData('updateMessageStatus', {
       registrationNumbers: registrationNumbers.join(','),
       messageType,
       status
@@ -139,15 +134,15 @@ export const googleSheetsService = {
   },
 
   async moveToInterview(candidateIds: string): Promise<GoogleSheetsResponse> {
-    return makeRequest('moveToInterview', { candidateIds });
+    return fetchData('moveToInterview', { candidateIds });
   },
 
   async getInterviewCandidates(): Promise<GoogleSheetsResponse> {
-    return makeRequest('getInterviewCandidates');
+    return fetchData('getInterviewCandidates');
   },
 
   async getInterviewers(): Promise<GoogleSheetsResponse> {
-    return makeRequest('getInterviewers');
+    return fetchData('getInterviewers');
   },
 
   async allocateToInterviewer(params: {
@@ -159,7 +154,7 @@ export const googleSheetsService = {
       ? params.candidateIds.join(',')
       : params.candidateIds;
 
-    return makeRequest('allocateToInterviewer', {
+    return fetchData('allocateToInterviewer', {
       candidateIds: candidateIdsString,
       interviewerEmail: params.interviewerEmail,
       adminEmail: params.adminEmail
@@ -167,15 +162,15 @@ export const googleSheetsService = {
   },
 
   async getInterviewerCandidates(interviewerEmail: string): Promise<GoogleSheetsResponse> {
-    return makeRequest('getInterviewerCandidates', { interviewerEmail });
+    return fetchData('getInterviewerCandidates', { interviewerEmail });
   },
 
   async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
-    return makeRequest('saveInterviewEvaluation', evaluation);
+    return fetchData('saveInterviewEvaluation', evaluation);
   },
 
   async getReportStats(): Promise<GoogleSheetsResponse> {
-    return makeRequest('getReportStats');
+    return fetchData('getReportStats');
   },
 
   async getReport(
@@ -186,19 +181,19 @@ export const googleSheetsService = {
     const params: any = { reportType };
     if (analystEmail) params.analystEmail = analystEmail;
     if (interviewerEmail) params.interviewerEmail = interviewerEmail;
-    return makeRequest('getReport', params);
+    return fetchData('getReport', params);
   },
 
   async getEmailAliases(): Promise<GoogleSheetsResponse> {
-    return makeRequest('getEmailAliases');
+    return fetchData('getEmailAliases');
   },
 
   async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
-    return makeRequest('saveScreening', screeningData);
+    return fetchData('saveScreening', screeningData);
   },
 
   async fetchCandidates(): Promise<any[]> {
-    const result = await makeRequest('getCandidates');
+    const result = await fetchData('getCandidates');
     if (result.success && result.data) {
       return result.data.candidates || result.data || [];
     }
@@ -206,8 +201,6 @@ export const googleSheetsService = {
   },
 
   async getAnalysts(): Promise<GoogleSheetsResponse> {
-    return makeRequest('getAnalysts');
+    return fetchData('getAnalysts');
   }
 };
-
-
