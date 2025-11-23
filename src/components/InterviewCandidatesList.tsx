@@ -17,50 +17,36 @@ export default function InterviewCandidatesList() {
     loadInterviewers();
   }, []);
 
-  async function handleAllocate() {
-  if (!selectedInterviewer) {
-    alert('Selecione um entrevistador');
-    return;
-  }
+  async function loadInterviewCandidates() {
+    try {
+      setLoading(true);
+      const { googleSheetsService } = await import('../services/googleSheets');
 
-  if (selectedCandidates.size === 0) {
-    alert('Selecione pelo menos um candidato');
-    return;
-  }
+      const result = await googleSheetsService.getInterviewCandidates();
 
-  try {
-    setAllocating(true);
-    const { googleSheetsService } = await import('../services/googleSheets');
+      if (!result.success) {
+        console.error('Erro:', result.error);
+        alert(`Erro ao carregar candidatos: ${result.error}`);
+        return;
+      }
 
-    // Converte para array de IDs/registration_numbers
-    const candidateIds = Array.from(selectedCandidates)
-      .map(id => {
-        const candidate = candidates.find(c => c.id === id);
-        return candidate?.registration_number || id;
-      });
+      let candidatesData: Candidate[] = [];
+      if (Array.isArray(result.data)) {
+        candidatesData = result.data;
+      } else if (result.data && typeof result.data === 'object') {
+        if (Array.isArray((result.data as any).candidates)) {
+          candidatesData = (result.data as any).candidates;
+        }
+      }
 
-    // CORREÇÃO: Passa como objeto com as propriedades que a função espera
-    const result = await googleSheetsService.allocateToInterviewer({
-      candidateIds: candidateIds.join(','), // Converte array para string
-      interviewerEmail: selectedInterviewer,
-      adminEmail: user?.email || 'admin'
-    });
-
-    if (!result.success) {
-      throw new Error(result.error || 'Erro ao alocar candidatos');
+      setCandidates(candidatesData);
+    } catch (error) {
+      console.error('Erro ao carregar candidatos para entrevista:', error);
+      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setLoading(false);
     }
-
-    alert(`${selectedCandidates.size} candidato(s) alocado(s) para entrevista com sucesso!`);
-    setSelectedCandidates(new Set());
-    setSelectedInterviewer('');
-    loadInterviewCandidates();
-  } catch (error) {
-    console.error('Erro ao alocar candidatos:', error);
-    alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-  } finally {
-    setAllocating(false);
   }
-}
 
   async function loadInterviewers() {
     try {
@@ -108,19 +94,19 @@ export default function InterviewCandidatesList() {
       setAllocating(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      // CORREÇÃO: Mantém como array em vez de converter para string
+      // Converte para array de IDs/registration_numbers
       const candidateIds = Array.from(selectedCandidates)
         .map(id => {
           const candidate = candidates.find(c => c.id === id);
           return candidate?.registration_number || id;
         });
-      // Remove o .join(',') que estava causando o erro
 
-      const result = await googleSheetsService.allocateToInterviewer(
-        candidateIds, // Agora é um array, não uma string
-        selectedInterviewer,
-        user?.email || 'admin'
-      );
+      // CORREÇÃO: Passa como objeto com as propriedades que a função espera
+      const result = await googleSheetsService.allocateToInterviewer({
+        candidateIds: candidateIds.join(','), // Converte array para string
+        interviewerEmail: selectedInterviewer,
+        adminEmail: user?.email || 'admin'
+      });
 
       if (!result.success) {
         throw new Error(result.error || 'Erro ao alocar candidatos');
