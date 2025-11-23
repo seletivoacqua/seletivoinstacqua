@@ -94,15 +94,16 @@ export default function InterviewCandidatesList() {
       setAllocating(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
+      // CORREÇÃO: Mantém como array em vez de converter para string
       const candidateIds = Array.from(selectedCandidates)
         .map(id => {
           const candidate = candidates.find(c => c.id === id);
           return candidate?.registration_number || id;
-        })
-        .join(',');
+        });
+      // Remove o .join(',') que estava causando o erro
 
       const result = await googleSheetsService.allocateToInterviewer(
-        candidateIds,
+        candidateIds, // Agora é um array, não uma string
         selectedInterviewer,
         user?.email || 'admin'
       );
