@@ -428,24 +428,24 @@ function getTableRowData(candidate: Candidate): string[] {
   }
 
   const filteredReportData = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return reportData;
-    }
+  if (!searchTerm.trim()) {
+    return reportData;
+  }
 
-    const searchLower = searchTerm.toLowerCase().trim();
+  const searchLower = searchTerm.toLowerCase().trim();
 
-    return reportData.filter(candidate => {
-      const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
-      const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
-      const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
-      const inscricao = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
+  return reportData.filter(candidate => {
+    const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
+    const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
+    const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
+    const inscricao = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
 
-      return nomeCompleto.includes(searchLower) ||
-             nomeSocial.includes(searchLower) ||
-             cpf.includes(searchLower);
-             inscricao.includes(searchLower);
-    });
-  }, [reportData, searchTerm]);
+    return nomeCompleto.includes(searchLower) ||
+           nomeSocial.includes(searchLower) ||
+           cpf.includes(searchLower) ||
+           inscricao.includes(searchLower); // CORREÇÃO: incluído na busca
+  });
+}, [reportData, searchTerm]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -581,13 +581,13 @@ function getTableRowData(candidate: Candidate): string[] {
               <label className="block text-xs text-gray-600 mb-1">Buscar Candidato</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Nome ou CPF..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
-                />
+               <input
+  type="text"
+  placeholder="Nome, CPF ou Inscrição..." // CORREÇÃO: atualizado para incluir inscrição
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+/>
               </div>
             </div>
 
