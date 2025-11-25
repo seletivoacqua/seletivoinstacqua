@@ -181,76 +181,76 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function exportToCSV() {
-    if (reportData.length === 0) {
-      alert('Não há dados para exportar');
-      return;
-    }
+  if (reportData.length === 0) {
+    alert('Não há dados para exportar');
+    return;
+  }
 
-    let headers: string[] = [];
-    let rows: string[][] = [];
+  let headers: string[] = [];
+  let rows: string[][] = [];
 
-    switch (reportType) {
-      case 'classificados':
-      case 'entrevista_classificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Analista', 'Entrevistador'];
-        rows = reportData.map(c => [
-          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
-          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
-          getCandidateField(c, 'CPF', 'cpf'),
-          getCandidateField(c, 'TELEFONE', 'telefone'),
-          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
-          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
-          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
-          getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
-        ]);
-        break;
+  switch (reportType) {
+    case 'classificados':
+    case 'entrevista_classificados':
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Analista', 'Entrevistador'];
+      rows = reportData.map(c => [
+        getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+        getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+        getCandidateField(c, 'CPF', 'cpf'),
+        getCandidateField(c, 'TELEFONE', 'telefone'),
+        [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'), // CORREÇÃO: Adicionado aqui
+        getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+        getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
+        getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
+      ]);
+      break;
 
-      case 'desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Motivo Desclassificação', 'PCD', 'Analista'];
-        rows = reportData.map(c => [
-          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
-          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
-          getCandidateField(c, 'CPF', 'cpf'),
-          getCandidateField(c, 'TELEFONE', 'telefone'),
-          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
-          getCandidateField(c, 'Motivo Desclassificação', 'motivo_desclassificacao'),
-          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
-          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
-        ]);
-        break;
+    case 'desclassificados':
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Motivo Desclassificação', 'PCD', 'Analista']; // CORREÇÃO: Ordem corrigida
+      rows = reportData.map(c => [
+        getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+        getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+        getCandidateField(c, 'CPF', 'cpf'),
+        getCandidateField(c, 'TELEFONE', 'telefone'),
+        [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'), // CORREÇÃO: Adicionado aqui
+        getCandidateField(c, 'Motivo Desclassificação', 'motivo_desclassificacao'),
+        getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+        getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+      ]);
+      break;
 
-      case 'todos_triagem':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Status', 'PCD', 'Analista'];
-        rows = reportData.map(c => [
-          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
-          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
-          getCandidateField(c, 'CPF', 'cpf'),
-          getCandidateField(c, 'TELEFONE', 'telefone'),
-          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
-          getCandidateField(c, 'Status', 'statusTriagem', 'status_triagem', 'status'),
-          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
-          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
-        ]);
-        break;
+    case 'todos_triagem':
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Status', 'PCD', 'Analista']; // CORREÇÃO: Ordem corrigida
+      rows = reportData.map(c => [
+        getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+        getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+        getCandidateField(c, 'CPF', 'cpf'),
+        getCandidateField(c, 'TELEFONE', 'telefone'),
+        [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'), // CORREÇÃO: Adicionado aqui
+        getCandidateField(c, 'Status', 'statusTriagem', 'status_triagem', 'status'),
+        getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+        getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+      ]);
+      break;
 
-      case 'entrevista_desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Pontuação', 'PCD', 'Entrevistador'];
-        rows = reportData.map(c => [
-          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
-          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
-          getCandidateField(c, 'CPF', 'cpf'),
-          getCandidateField(c, 'TELEFONE', 'telefone'),
-          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-          c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
-          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
-          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
-          getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
-        ]);
-        break;
-    }
+    case 'entrevista_desclassificados':
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Pontuação', 'PCD', 'Entrevistador']; // CORREÇÃO: Ordem corrigida
+      rows = reportData.map(c => [
+        getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+        getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+        getCandidateField(c, 'CPF', 'cpf'),
+        getCandidateField(c, 'TELEFONE', 'telefone'),
+        [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'), // CORREÇÃO: Adicionado aqui
+        c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
+        getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+        getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
+      ]);
+      break;
+  }
 
     const csv = [
       headers.join(','),
@@ -345,63 +345,62 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function getTableHeaders(): string[] {
-    const baseHeaders = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Inscrição'];
+  const baseHeaders = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Inscrição'];
 
-    switch (reportType) {
-      case 'desclassificados':
-        return [...baseHeaders, 'Motivo Desclassificação', 'PCD', 'Analista'];
-      case 'todos_triagem':
-        return [...baseHeaders, 'Status', 'PCD', 'Analista'];
-      case 'entrevista_classificados':
-        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
-      case 'entrevista_desclassificados':
-        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
-      default:
-        return [...baseHeaders, 'PCD', 'Analista'];
-    }
+  switch (reportType) {
+    case 'desclassificados':
+      return [...baseHeaders, 'Motivo Desclassificação', 'PCD', 'Analista'];
+    case 'todos_triagem':
+      return [...baseHeaders, 'Status', 'PCD', 'Analista'];
+    case 'entrevista_classificados':
+    case 'entrevista_desclassificados':
+      return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
+    default:
+      return [...baseHeaders, 'PCD', 'Analista'];
   }
+}
 
-  function getTableRowData(candidate: Candidate): string[] {
-    const baseData = [
-      getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado',
-      getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-',
-      getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado',
-      getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado',
-      getCandidateField(c, 'NUMEROINSCRICAO', 'inscrição'),
-      [getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'
-    ];
+function getTableRowData(candidate: Candidate): string[] {
+  const baseData = [
+    getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado',
+    getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-',
+    getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado',
+    getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado',
+    [getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado',
+    getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao') || 'Não informado' // CORREÇÃO: Adicionado aqui
+  ];
 
-    switch (reportType) {
-      case 'desclassificados':
-        return [
-          ...baseData,
-          getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado',
-          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
-          getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
-        ];
-      case 'todos_triagem':
-        return [
-          ...baseData,
-          getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status') || 'Não informado',
-          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
-          getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
-        ];
-      case 'entrevista_classificados':
-      case 'entrevista_desclassificados':
-        return [
-          ...baseData,
-          (candidate.interview_score?.toString() || candidate.pontuacao_entrevista?.toString() || '0'),
-          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
-          getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'
-        ];
-      default:
-        return [
-          ...baseData,
-          getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
-          getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
-        ];
-    }
+  switch (reportType) {
+    case 'desclassificados':
+      return [
+        ...baseData,
+        getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado',
+        getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+        getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
+      ];
+    case 'todos_triagem':
+      return [
+        ...baseData,
+        getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status') || 'Não informado',
+        getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+        getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
+      ];
+    case 'entrevista_classificados':
+    case 'entrevista_desclassificados':
+      return [
+        ...baseData,
+        (candidate.interview_score?.toString() || candidate.pontuacao_entrevista?.toString() || '0'),
+        getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+        getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'
+      ];
+    default:
+      return [
+        ...baseData,
+        getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+        getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
+      ];
   }
+}
 
   function getReportTitle(): string {
     switch (reportType) {
@@ -646,137 +645,142 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Nome Completo
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Nome Social
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      CPF
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Telefone
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      Cargo Pretendido
-                    </th>
-                    {reportType === 'desclassificados' && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                        Motivo Desclassificação
-                      </th>
-                    )}
-                    {reportType === 'todos_triagem' && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                        Status
-                      </th>
-                    )}
-                    {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                        Pontuação
-                      </th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                      PCD
-                    </th>
-                    {shouldShowAnalystFilter() && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                        Analista
-                      </th>
-                    )}
-                    {shouldShowInterviewerFilter() && (
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
-                        Entrevistador
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredReportData.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
-                        <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                        Nenhum candidato encontrado com "{searchTerm}"
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredReportData.map((candidate, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                        {getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 font-mono">
-                        {getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {[getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'}
-                      </td>
-                         <td className="px-4 py-3 text-sm text-gray-600 font-mono">
-                        {getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao') || 'Não informado'}
-                      </td>
-                      {reportType === 'desclassificados' && (
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado'}
-                        </td>
-                      )}
-                      {reportType === 'todos_triagem' && (
-                        <td className="px-4 py-3 text-sm">
-                          {(() => {
-                            const status = getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status').toLowerCase();
-                            if (status === 'classificado') {
-                              return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Classificado</span>;
-                            } else if (status === 'desclassificado') {
-                              return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">Desclassificado</span>;
-                            } else {
-                              return <span className="text-gray-400">{status || 'Não informado'}</span>;
-                            }
-                          })()}
-                        </td>
-                      )}
-                      {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
-                        <td className="px-4 py-3 text-sm font-semibold">
-                          <span className={
-                            Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 80
-                              ? 'text-green-700'
-                              : Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 60
-                              ? 'text-yellow-700'
-                              : 'text-red-700'
-                          }>
-                            {candidate.interview_score || candidate.pontuacao_entrevista || 0}/120
-                          </span>
-                        </td>
-                      )}
-                      <td className="px-4 py-3 text-sm">
-                        {getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') === 'Sim' ? (
-                          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                            Sim
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">Não</span>
-                        )}
-                      </td>
-                      {shouldShowAnalystFilter() && (
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'}
-                        </td>
-                      )}
-                      {shouldShowInterviewerFilter() && (
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'}
-                        </td>
-                      )}
-                    </tr>
-                    ))
-                  )}
-                </tbody>
+               <thead className="bg-gray-50 border-b">
+  <tr>
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      Nome Completo
+    </th>
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      Nome Social
+    </th>
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      CPF
+    </th>
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      Telefone
+    </th>
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      Cargo Pretendido
+    </th>
+    {/* CORREÇÃO: Adicionar a coluna de Inscrição */}
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      Inscrição
+    </th>
+    {reportType === 'desclassificados' && (
+      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+        Motivo Desclassificação
+      </th>
+    )}
+    {reportType === 'todos_triagem' && (
+      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+        Status
+      </th>
+    )}
+    {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
+      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+        Pontuação
+      </th>
+    )}
+    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+      PCD
+    </th>
+    {shouldShowAnalystFilter() && (
+      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+        Analista
+      </th>
+    )}
+    {shouldShowInterviewerFilter() && (
+      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+        Entrevistador
+      </th>
+    )}
+  </tr>
+</thead>
+<tbody className="divide-y divide-gray-200">
+  {filteredReportData.length === 0 ? (
+    <tr>
+      <td colSpan={11} className="px-4 py-8 text-center text-gray-500"> {/* Aumentar colSpan para 11 */}
+        <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+        Nenhum candidato encontrado com "{searchTerm}"
+      </td>
+    </tr>
+  ) : (
+    filteredReportData.map((candidate, index) => (
+      <tr key={index} className="hover:bg-gray-50">
+        <td className="px-4 py-3 text-sm text-gray-800 font-medium">
+          {getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name') || 'Não informado'}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600">
+          {getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-'}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+          {getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado'}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600">
+          {getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado'}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600">
+          {[getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'}
+        </td>
+        {/* CORREÇÃO: Adicionar a célula de Inscrição */}
+        <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+          {getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao') || 'Não informado'}
+        </td>
+        {reportType === 'desclassificados' && (
+          <td className="px-4 py-3 text-sm text-gray-600">
+            {getCandidateField(candidate, 'Motivo Desclassificação', 'motivo_desclassificacao') || 'Não informado'}
+          </td>
+        )}
+        {reportType === 'todos_triagem' && (
+          <td className="px-4 py-3 text-sm">
+            {(() => {
+              const status = getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status').toLowerCase();
+              if (status === 'classificado') {
+                return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Classificado</span>;
+              } else if (status === 'desclassificado') {
+                return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">Desclassificado</span>;
+              } else {
+                return <span className="text-gray-400">{status || 'Não informado'}</span>;
+              }
+            })()}
+          </td>
+        )}
+        {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
+          <td className="px-4 py-3 text-sm font-semibold">
+            <span className={
+              Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 80
+                ? 'text-green-700'
+                : Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 60
+                ? 'text-yellow-700'
+                : 'text-red-700'
+            }>
+              {candidate.interview_score || candidate.pontuacao_entrevista || 0}/120
+            </span>
+          </td>
+        )}
+        <td className="px-4 py-3 text-sm">
+          {getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') === 'Sim' ? (
+            <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+              Sim
+            </span>
+          ) : (
+            <span className="text-gray-400">Não</span>
+          )}
+        </td>
+        {shouldShowAnalystFilter() && (
+          <td className="px-4 py-3 text-sm text-gray-600">
+            {getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'}
+          </td>
+        )}
+        {shouldShowInterviewerFilter() && (
+          <td className="px-4 py-3 text-sm text-gray-600">
+            {getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'}
+          </td>
+        )}
+      </tr>
+    ))
+  )}
+</tbody>
               </table>
             </div>
           </div>
