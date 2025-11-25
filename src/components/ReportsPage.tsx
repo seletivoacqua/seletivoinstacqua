@@ -192,13 +192,14 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     switch (reportType) {
       case 'classificados':
       case 'entrevista_classificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'PCD', 'Analista', 'Entrevistador'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Analista', 'Entrevistador'];
         rows = reportData.map(c => [
           getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
           getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
           getCandidateField(c, 'CPF', 'cpf'),
           getCandidateField(c, 'TELEFONE', 'telefone'),
           [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
           getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
@@ -213,6 +214,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           getCandidateField(c, 'CPF', 'cpf'),
           getCandidateField(c, 'TELEFONE', 'telefone'),
           [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
           getCandidateField(c, 'Motivo Desclassificação', 'motivo_desclassificacao'),
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
@@ -227,6 +229,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           getCandidateField(c, 'CPF', 'cpf'),
           getCandidateField(c, 'TELEFONE', 'telefone'),
           [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
           getCandidateField(c, 'Status', 'statusTriagem', 'status_triagem', 'status'),
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
@@ -242,6 +245,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           getCandidateField(c, 'TELEFONE', 'telefone'),
           [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
           c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
           getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
           getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
         ]);
@@ -341,7 +345,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function getTableHeaders(): string[] {
-    const baseHeaders = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido'];
+    const baseHeaders = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Inscrição'];
 
     switch (reportType) {
       case 'desclassificados':
@@ -363,6 +367,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       getCandidateField(candidate, 'NOMESOCIAL', 'nome_social') || '-',
       getCandidateField(candidate, 'CPF', 'cpf') || 'Não informado',
       getCandidateField(candidate, 'TELEFONE', 'telefone') || 'Não informado',
+      getCandidateField(c, 'NUMEROINSCRICAO', 'inscrição'),
       [getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'
     ];
 
@@ -434,10 +439,12 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
       const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
       const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
+      const cpf = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
 
       return nomeCompleto.includes(searchLower) ||
              nomeSocial.includes(searchLower) ||
              cpf.includes(searchLower);
+             inscricao.includes(searchLower);
     });
   }, [reportData, searchTerm]);
 
@@ -711,6 +718,9 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {[getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo') || 'Não informado'}
+                      </td>
+                         <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+                        {getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao') || 'Não informado'}
                       </td>
                       {reportType === 'desclassificados' && (
                         <td className="px-4 py-3 text-sm text-gray-600">
