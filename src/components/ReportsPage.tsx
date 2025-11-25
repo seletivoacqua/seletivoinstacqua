@@ -438,7 +438,7 @@ function getTableRowData(candidate: Candidate): string[] {
       const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
       const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
       const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
-      const cpf = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
+      const inscricao = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
 
       return nomeCompleto.includes(searchLower) ||
              nomeSocial.includes(searchLower) ||
