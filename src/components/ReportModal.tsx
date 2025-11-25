@@ -229,7 +229,7 @@ export default function ReportModal({
                   <div className="flex-1 text-left">
                     <h3 className="text-lg font-bold text-slate-800 mb-1">Apenas Classificados</h3>
                     <p className="text-sm text-slate-600">
-                      Lista detalhada com nome, área, cargo e número de registro dos candidatos classificados
+                      Lista detalhada com nome, área, cargo, número de inscrição e número de registro dos candidatos classificados
                     </p>
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export default function ReportModal({
                   <div className="flex-1 text-left">
                     <h3 className="text-lg font-bold text-slate-800 mb-1">Apenas Desclassificados</h3>
                     <p className="text-sm text-slate-600">
-                      Lista detalhada com nome, área, cargo e número de registro dos candidatos desclassificados
+                      Lista detalhada com nome, área, cargo, número de inscrição e motivo da desclassificação
                     </p>
                   </div>
                 </div>
@@ -287,7 +287,7 @@ export default function ReportModal({
                   <div className="flex-1 text-left">
                     <h3 className="text-lg font-bold text-slate-800 mb-1">Todos Triagem</h3>
                     <p className="text-sm text-slate-600">
-                      Lista completa com todos os candidatos triados (classificados e desclassificados juntos)
+                      Lista completa com todos os candidatos triados (classificados e desclassificados) incluindo número de inscrição
                     </p>
                   </div>
                 </div>
@@ -308,4 +308,3 @@ export default function ReportModal({
     </div>
   );
 }
-
