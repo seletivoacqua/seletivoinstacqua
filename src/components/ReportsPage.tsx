@@ -191,18 +191,31 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
   switch (reportType) {
     case 'classificados':
-    case 'entrevista_classificados':
-      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Analista', 'Entrevistador'];
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Analista'];
       rows = reportData.map(c => [
         getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
         getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
         getCandidateField(c, 'CPF', 'cpf'),
         getCandidateField(c, 'TELEFONE', 'telefone'),
         [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'), // CORREÇÃO: Adicionado aqui
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
         getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
-        getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem'),
-        getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
+        getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+      ]);
+      break;
+
+    case 'entrevista_classificados':
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
+      rows = reportData.map(c => [
+        getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+        getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+        getCandidateField(c, 'CPF', 'cpf'),
+        getCandidateField(c, 'TELEFONE', 'telefone'),
+        [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+        getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+        getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador'),
+        getCandidateField(c, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista')
       ]);
       break;
 
@@ -237,17 +250,18 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       break;
 
     case 'entrevista_desclassificados':
-      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Pontuação', 'PCD', 'Entrevistador']; // CORREÇÃO: Ordem corrigida
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
       rows = reportData.map(c => [
         getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
         getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
         getCandidateField(c, 'CPF', 'cpf'),
         getCandidateField(c, 'TELEFONE', 'telefone'),
         [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
-        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'), // CORREÇÃO: Adicionado aqui
+        getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
         c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
         getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
-        getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador')
+        getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador'),
+        getCandidateField(c, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista')
       ]);
       break;
   }
@@ -353,8 +367,9 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     case 'todos_triagem':
       return [...baseHeaders, 'Status', 'PCD', 'Analista'];
     case 'entrevista_classificados':
+      return [...baseHeaders, 'PCD', 'Entrevistador', 'Anotações Entrevista'];
     case 'entrevista_desclassificados':
-      return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
+      return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
     default:
       return [...baseHeaders, 'PCD', 'Analista'];
   }
@@ -386,12 +401,19 @@ function getTableRowData(candidate: Candidate): string[] {
         getCandidateField(candidate, 'assigned_analyst_name', 'Analista', 'analista_triagem') || '-'
       ];
     case 'entrevista_classificados':
+      return [
+        ...baseData,
+        getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
+        getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-',
+        getCandidateField(candidate, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista') || '-'
+      ];
     case 'entrevista_desclassificados':
       return [
         ...baseData,
         (candidate.interview_score?.toString() || candidate.pontuacao_entrevista?.toString() || '0'),
         getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
-        getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'
+        getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-',
+        getCandidateField(candidate, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista') || '-'
       ];
     default:
       return [
@@ -676,7 +698,7 @@ function getTableRowData(candidate: Candidate): string[] {
         Status
       </th>
     )}
-    {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
+    {reportType === 'entrevista_desclassificados' && (
       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
         Pontuação
       </th>
@@ -694,12 +716,17 @@ function getTableRowData(candidate: Candidate): string[] {
         Entrevistador
       </th>
     )}
+    {shouldShowInterviewerFilter() && (
+      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+        Anotações Entrevista
+      </th>
+    )}
   </tr>
 </thead>
 <tbody className="divide-y divide-gray-200">
   {filteredReportData.length === 0 ? (
     <tr>
-      <td colSpan={11} className="px-4 py-8 text-center text-gray-500"> {/* Aumentar colSpan para 11 */}
+      <td colSpan={12} className="px-4 py-8 text-center text-gray-500">
         <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
         Nenhum candidato encontrado com "{searchTerm}"
       </td>
@@ -745,7 +772,7 @@ function getTableRowData(candidate: Candidate): string[] {
             })()}
           </td>
         )}
-        {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
+        {reportType === 'entrevista_desclassificados' && (
           <td className="px-4 py-3 text-sm font-semibold">
             <span className={
               Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 80
@@ -775,6 +802,13 @@ function getTableRowData(candidate: Candidate): string[] {
         {shouldShowInterviewerFilter() && (
           <td className="px-4 py-3 text-sm text-gray-600">
             {getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-'}
+          </td>
+        )}
+        {shouldShowInterviewerFilter() && (
+          <td className="px-4 py-3 text-sm text-gray-600 max-w-md">
+            <div className="line-clamp-3" title={getCandidateField(candidate, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista')}>
+              {getCandidateField(candidate, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista') || '-'}
+            </div>
           </td>
         )}
       </tr>
