@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FileText, Download, Filter, Loader2, Users, UserX, ClipboardCheck, Search } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import type { Candidate } from '../types/candidate';
 
 interface ReportsPageProps {
@@ -286,7 +287,107 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function exportToExcel() {
-    exportToCSV();
+    if (reportData.length === 0) {
+      alert('Não há dados para exportar');
+      return;
+    }
+
+    let headers: string[] = [];
+    let rows: any[][] = [];
+
+    switch (reportType) {
+      case 'classificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Analista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+        ]);
+        break;
+
+      case 'entrevista_classificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+          c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador'),
+          getCandidateField(c, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista')
+        ]);
+        break;
+
+      case 'desclassificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Motivo Desclassificação', 'PCD', 'Analista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+          getCandidateField(c, 'Motivo Desclassificação', 'motivo_desclassificacao'),
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+        ]);
+        break;
+
+      case 'todos_triagem':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Status', 'PCD', 'Analista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+          getCandidateField(c, 'Status', 'statusTriagem', 'status_triagem', 'status'),
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'assigned_analyst_name', 'Analista', 'analista_triagem')
+        ]);
+        break;
+
+      case 'entrevista_desclassificados':
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
+        rows = reportData.map(c => [
+          getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
+          getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
+          getCandidateField(c, 'CPF', 'cpf'),
+          getCandidateField(c, 'TELEFONE', 'telefone'),
+          [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
+          getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+          c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
+          getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
+          getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador'),
+          getCandidateField(c, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista')
+        ]);
+        break;
+    }
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    const columnWidths = headers.map((header, i) => {
+      const maxLength = Math.max(
+        header.length,
+        ...rows.map(row => String(row[i] || '').length)
+      );
+      return { wch: Math.min(maxLength + 2, 50) };
+    });
+    worksheet['!cols'] = columnWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, getReportTitle().substring(0, 31));
+
+    XLSX.writeFile(workbook, `relatorio_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`);
   }
 
   function exportToPDF() {
