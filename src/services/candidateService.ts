@@ -383,6 +383,18 @@ export const candidateService = {
         assistencial: filteredData.filter(c => c.AREAATUACAO === 'Assistencial').length,
         pcd: filteredData.filter(c => c.VAGAPCD === 'Sim').length,
         nao_pcd: filteredData.filter(c => c.VAGAPCD === 'Não').length,
+        totalEntrevistados: filteredData.filter(c => {
+          const resultadoEntrevista = (c as any).ResultadoEntrevista || (c as any).resultado_entrevista || '';
+          return resultadoEntrevista && resultadoEntrevista.trim() !== '';
+        }).length,
+        aprovadosEntrevista: filteredData.filter(c => {
+          const resultadoEntrevista = (c as any).ResultadoEntrevista || (c as any).resultado_entrevista || '';
+          return resultadoEntrevista === 'Aprovado' || resultadoEntrevista === 'aprovado';
+        }).length,
+        reprovadosEntrevista: filteredData.filter(c => {
+          const resultadoEntrevista = (c as any).ResultadoEntrevista || (c as any).resultado_entrevista || '';
+          return resultadoEntrevista === 'Reprovado' || resultadoEntrevista === 'reprovado';
+        }).length,
       };
 
       return stats;
