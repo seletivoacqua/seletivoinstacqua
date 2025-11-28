@@ -23,7 +23,10 @@ export default function AdminDashboard() {
     concluido: 0,
     classificado: 0,
     desclassificado: 0,
-    revisar: 0
+    revisar: 0,
+    totalEntrevistados: 0,
+    aprovadosEntrevista: 0,
+    reprovadosEntrevista: 0
   });
 
   useEffect(() => {
@@ -99,6 +102,30 @@ export default function AdminDashboard() {
                 Desclassificados
               </div>
               <div className="text-2xl font-bold text-red-800">{stats.desclassificado}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="bg-sky-50 rounded-lg p-4">
+              <div className="text-sm text-sky-800 flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                Total Entrevistados
+              </div>
+              <div className="text-2xl font-bold text-sky-800">{stats.totalEntrevistados}</div>
+            </div>
+            <div className="bg-teal-50 rounded-lg p-4">
+              <div className="text-sm text-teal-800 flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                Aprovados Entrevista
+              </div>
+              <div className="text-2xl font-bold text-teal-800">{stats.aprovadosEntrevista}</div>
+            </div>
+            <div className="bg-rose-50 rounded-lg p-4">
+              <div className="text-sm text-rose-800 flex items-center gap-1">
+                <XCircle className="w-4 h-4" />
+                Reprovados Entrevista
+              </div>
+              <div className="text-2xl font-bold text-rose-800">{stats.reprovadosEntrevista}</div>
             </div>
           </div>
         </div>
