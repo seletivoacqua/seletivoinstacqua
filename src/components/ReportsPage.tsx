@@ -754,7 +754,7 @@ function getTableRowData(candidate: Candidate): string[] {
                 ? 'text-yellow-700'
                 : 'text-red-700'
             }>
-              {candidate.interview_score || candidate.pontuacao_entrevista || 0}/120
+              {candidate.interview_score || candidate.pontuacao_entrevista || 0}/80
             </span>
           </td>
         )}
