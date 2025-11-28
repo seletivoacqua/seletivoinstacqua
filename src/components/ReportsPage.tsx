@@ -205,7 +205,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       break;
 
     case 'entrevista_classificados':
-      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
+      headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargos', 'Inscrição', 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
       rows = reportData.map(c => [
         getCandidateField(c, 'NOMECOMPLETO', 'nome_completo', 'full_name'),
         getCandidateField(c, 'NOMESOCIAL', 'nome_social'),
@@ -213,6 +213,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         getCandidateField(c, 'TELEFONE', 'telefone'),
         [getCandidateField(c, 'CARGOADMIN'), getCandidateField(c, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(c, 'cargo'),
         getCandidateField(c, 'NUMEROINSCRICAO', 'inscricao'),
+        c.interview_score?.toString() || c.pontuacao_entrevista?.toString() || '0',
         getCandidateField(c, 'VAGAPCD', 'vaga_pcd'),
         getCandidateField(c, 'interviewer_name', 'entrevistador', 'Entrevistador'),
         getCandidateField(c, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista')
@@ -367,7 +368,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     case 'todos_triagem':
       return [...baseHeaders, 'Status', 'PCD', 'Analista'];
     case 'entrevista_classificados':
-      return [...baseHeaders, 'PCD', 'Entrevistador', 'Anotações Entrevista'];
+      return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
     case 'entrevista_desclassificados':
       return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador', 'Anotações Entrevista'];
     default:
@@ -403,6 +404,7 @@ function getTableRowData(candidate: Candidate): string[] {
     case 'entrevista_classificados':
       return [
         ...baseData,
+        (candidate.interview_score?.toString() || candidate.pontuacao_entrevista?.toString() || '0'),
         getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd') || 'Não',
         getCandidateField(candidate, 'interviewer_name', 'entrevistador', 'Entrevistador') || '-',
         getCandidateField(candidate, 'interview_notes', 'anotacoes_entrevista', 'Anotações da Entrevista') || '-'
@@ -698,7 +700,7 @@ function getTableRowData(candidate: Candidate): string[] {
         Status
       </th>
     )}
-    {reportType === 'entrevista_desclassificados' && (
+    {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
         Pontuação
       </th>
@@ -772,7 +774,7 @@ function getTableRowData(candidate: Candidate): string[] {
             })()}
           </td>
         )}
-        {reportType === 'entrevista_desclassificados' && (
+        {(reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados') && (
           <td className="px-4 py-3 text-sm font-semibold">
             <span className={
               Number(candidate.interview_score || candidate.pontuacao_entrevista || 0) >= 80
