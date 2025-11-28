@@ -35,8 +35,23 @@ export default function AdminDashboard() {
 
   async function loadStats() {
     try {
-      const data = await candidateService.getStatistics();
-      setStats(data);
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getReportStats();
+
+      if (result.success && result.data) {
+        setStats({
+          total: result.data.classificados + result.data.desclassificados || 0,
+          pendente: 0,
+          em_analise: 0,
+          concluido: result.data.classificados + result.data.desclassificados || 0,
+          classificado: result.data.classificados || 0,
+          desclassificado: result.data.desclassificados || 0,
+          revisar: 0,
+          totalEntrevistados: (result.data.entrevistaClassificados || 0) + (result.data.entrevistaDesclassificados || 0),
+          aprovadosEntrevista: result.data.entrevistaClassificados || 0,
+          reprovadosEntrevista: result.data.entrevistaDesclassificados || 0
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     }
