@@ -25,6 +25,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [reportType, setReportType] = useState<ReportType>('classificados');
   const [reportData, setReportData] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchField, setSearchField] = useState<string>('all');
   const [stats, setStats] = useState({
     classificados: 0,
     desclassificados: 0,
@@ -565,12 +566,22 @@ function getTableRowData(candidate: Candidate): string[] {
     const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
     const inscricao = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
 
-    return nomeCompleto.includes(searchLower) ||
-           nomeSocial.includes(searchLower) ||
-           cpf.includes(searchLower) ||
-           inscricao.includes(searchLower); // CORREÇÃO: incluído na busca
+    if (searchField === 'all') {
+      return nomeCompleto.includes(searchLower) ||
+             nomeSocial.includes(searchLower) ||
+             cpf.includes(searchLower) ||
+             inscricao.includes(searchLower);
+    } else if (searchField === 'nome') {
+      return nomeCompleto.includes(searchLower) || nomeSocial.includes(searchLower);
+    } else if (searchField === 'cpf') {
+      return cpf.includes(searchLower);
+    } else if (searchField === 'inscricao') {
+      return inscricao.includes(searchLower);
+    }
+
+    return false;
   });
-}, [reportData, searchTerm]);
+}, [reportData, searchTerm, searchField]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -703,12 +714,31 @@ function getTableRowData(candidate: Candidate): string[] {
             )}
 
             <div>
+              <label className="block text-xs text-gray-600 mb-1">Filtrar por Campo</label>
+              <select
+                value={searchField}
+                onChange={(e) => setSearchField(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Todos os Campos</option>
+                <option value="nome">Nome</option>
+                <option value="cpf">CPF</option>
+                <option value="inscricao">Inscrição</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-xs text-gray-600 mb-1">Buscar Candidato</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                <input
   type="text"
-  placeholder="Nome, CPF ou Inscrição..." // CORREÇÃO: atualizado para incluir inscrição
+  placeholder={
+    searchField === 'all' ? "Nome, CPF ou Inscrição..." :
+    searchField === 'nome' ? "Nome do candidato..." :
+    searchField === 'cpf' ? "CPF do candidato..." :
+    "Número de inscrição..."
+  }
   value={searchTerm}
   onChange={(e) => setSearchTerm(e.target.value)}
   className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
