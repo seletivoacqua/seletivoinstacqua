@@ -118,55 +118,84 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   async function loadReport() {
-    try {
-      setLoading(true);
-      console.log('📋 Carregando relatório...', {
-        reportType,
-        selectedAnalyst,
-        selectedInterviewer
-      });
+  try {
+    setLoading(true);
+    console.log('📋 Carregando relatório...', {
+      reportType,
+      selectedAnalyst,
+      selectedInterviewer
+    });
 
-      const { googleSheetsService } = await import('../services/googleSheets');
+    const { googleSheetsService } = await import('../services/googleSheets');
 
-      let analystEmail = undefined;
-      let interviewerEmail = undefined;
+    let analystEmail = undefined;
+    let interviewerEmail = undefined;
 
-      if (selectedAnalyst !== 'todos') {
-        const analyst = analysts.find(a => a.id === selectedAnalyst);
-        analystEmail = analyst?.email;
-        console.log('👤 Filtro analista:', analystEmail);
-      }
-
-      if (selectedInterviewer !== 'todos') {
-        const interviewer = interviewers.find(i => i.id === selectedInterviewer);
-        interviewerEmail = interviewer?.email;
-        console.log('🎤 Filtro entrevistador:', interviewerEmail);
-      }
-
-      const result = await googleSheetsService.getReport(
-        reportType,
-        analystEmail,
-        interviewerEmail
-      );
-
-      console.log('📦 Resultado relatório:', result);
-
-      if (result.success && result.data) {
-        const data = Array.isArray(result.data) ? result.data : [];
-        setReportData(data);
-        console.log('✅ Relatório carregado:', data.length, 'registros');
-      } else {
-        console.error('❌ Falha ao carregar relatório:', result);
-        setReportData([]);
-      }
-    } catch (error) {
-      console.error('❌ Erro ao carregar relatório:', error);
-      setReportData([]);
-    } finally {
-      setLoading(false);
+    if (selectedAnalyst !== 'todos') {
+      const analyst = analysts.find(a => a.id === selectedAnalyst);
+      analystEmail = analyst?.email;
+      console.log('👤 Filtro analista:', analystEmail);
     }
-  }
 
+    if (selectedInterviewer !== 'todos') {
+      const interviewer = interviewers.find(i => i.id === selectedInterviewer);
+      interviewerEmail = interviewer?.email;
+      console.log('🎤 Filtro entrevistador:', interviewerEmail);
+    }
+
+    const result = await googleSheetsService.getReport(
+      reportType,
+      analystEmail,
+      interviewerEmail
+    );
+
+    console.log('📦 Resultado relatório:', result);
+
+    if (result.success && result.data) {
+      let data = Array.isArray(result.data) ? result.data : [];
+      
+      // CORREÇÃO: Filtro adicional no frontend para garantir que só retorne desclassificados
+      if (reportType === 'entrevista_desclassificados') {
+        data = data.filter(candidate => {
+          const status = getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status', 'interview_status').toLowerCase();
+          const pontuacao = Number(candidate.interview_score || candidate.pontuacao_entrevista || 0);
+          
+          // Considerar como desclassificado se:
+          // - Status contém "desclassificado" ou "reprovado"
+          // - OU pontuação é menor que 60 (se houver critério de corte)
+          // - OU não tem status definido mas está vindo no relatório de desclassificados
+          return status.includes('desclassificad') || 
+                 status.includes('reprovad') || 
+                 pontuacao < 60 ||
+                 !status;
+        });
+        console.log('✅ Filtro aplicado - Desclassificados entrevista:', data.length, 'registros');
+      }
+
+      // CORREÇÃO similar para desclassificados da triagem
+      if (reportType === 'desclassificados') {
+        data = data.filter(candidate => {
+          const status = getCandidateField(candidate, 'Status', 'statusTriagem', 'status_triagem', 'status').toLowerCase();
+          return status.includes('desclassificad') || 
+                 status.includes('reprovad') ||
+                 !status;
+        });
+        console.log('✅ Filtro aplicado - Desclassificados triagem:', data.length, 'registros');
+      }
+
+      setReportData(data);
+      console.log('✅ Relatório carregado:', data.length, 'registros');
+    } else {
+      console.error('❌ Falha ao carregar relatório:', result);
+      setReportData([]);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao carregar relatório:', error);
+    setReportData([]);
+  } finally {
+    setLoading(false);
+  }
+}
   function getCandidateField(candidate: Candidate, ...fieldNames: string[]): string {
     for (const fieldName of fieldNames) {
       const value = (candidate as any)[fieldName];
