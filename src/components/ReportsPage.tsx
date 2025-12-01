@@ -22,6 +22,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [interviewers, setInterviewers] = useState<Analyst[]>([]);
   const [selectedAnalyst, setSelectedAnalyst] = useState<string>('todos');
   const [selectedInterviewer, setSelectedInterviewer] = useState<string>('todos');
+  const [selectedPCD, setSelectedPCD] = useState<string>('todos');
   const [reportType, setReportType] = useState<ReportType>('classificados');
   const [reportData, setReportData] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -567,26 +568,35 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   const filteredReportData = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return reportData;
+    let filtered = reportData;
+
+    if (selectedPCD !== 'todos') {
+      filtered = filtered.filter(candidate => {
+        const pcdValue = getPCDValue(candidate);
+        return pcdValue === selectedPCD;
+      });
     }
 
-    const searchLower = searchTerm.toLowerCase().trim();
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
 
-    return reportData.filter(candidate => {
-      const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
-      const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
-      const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
-      const inscricao = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
-      const cargo = ([getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo')).toLowerCase();
+      filtered = filtered.filter(candidate => {
+        const nomeCompleto = getCandidateField(candidate, 'NOMECOMPLETO', 'nome_completo', 'full_name').toLowerCase();
+        const nomeSocial = getCandidateField(candidate, 'NOMESOCIAL', 'nome_social').toLowerCase();
+        const cpf = getCandidateField(candidate, 'CPF', 'cpf').toLowerCase();
+        const inscricao = getCandidateField(candidate, 'NUMEROINSCRICAO', 'inscricao').toLowerCase();
+        const cargo = ([getCandidateField(candidate, 'CARGOADMIN'), getCandidateField(candidate, 'CARGOASSIS')].filter(Boolean).join(' | ') || getCandidateField(candidate, 'cargo')).toLowerCase();
 
-      return nomeCompleto.includes(searchLower) ||
-             nomeSocial.includes(searchLower) ||
-             cpf.includes(searchLower) ||
-             inscricao.includes(searchLower) ||
-             cargo.includes(searchLower);
-    });
-  }, [reportData, searchTerm]);
+        return nomeCompleto.includes(searchLower) ||
+               nomeSocial.includes(searchLower) ||
+               cpf.includes(searchLower) ||
+               inscricao.includes(searchLower) ||
+               cargo.includes(searchLower);
+      });
+    }
+
+    return filtered;
+  }, [reportData, searchTerm, selectedPCD]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -717,6 +727,19 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                 </select>
               </div>
             )}
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">PCD</label>
+              <select
+                value={selectedPCD}
+                onChange={(e) => setSelectedPCD(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="todos">Todos</option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
+              </select>
+            </div>
 
             <div>
               <label className="block text-xs text-gray-600 mb-1">Buscar Candidato</label>
