@@ -49,7 +49,6 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
 
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      // Carregar analistas e entrevistadores
       const [analystsResult, interviewersResult] = await Promise.all([
         googleSheetsService.getAnalysts(),
         googleSheetsService.getInterviewers()
@@ -58,9 +57,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       console.log('📊 Resultado analistas:', analystsResult);
       console.log('🎤 Resultado entrevistadores:', interviewersResult);
 
-      // Processar analistas
       if (analystsResult.success && analystsResult.data) {
-        // Verificar se os dados estão em data.analysts ou diretamente em data
         const analystsArray = analystsResult.data.analysts ||
                              (Array.isArray(analystsResult.data) ? analystsResult.data : []);
 
@@ -77,9 +74,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
         setAnalysts([]);
       }
 
-      // Processar entrevistadores
       if (interviewersResult.success && interviewersResult.data) {
-        // Verificar se os dados estão em data.interviewers ou diretamente em data
         const interviewersArray = interviewersResult.data.interviewers ||
                                  (Array.isArray(interviewersResult.data) ? interviewersResult.data : []);
 
@@ -183,13 +178,20 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   }
 
   function getPCDValue(candidate: Candidate): string {
-    const pcdValue = getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd');
-    if (pcdValue === '1' || pcdValue === 'Sim' || pcdValue === 'true' || pcdValue === 'SIM') {
+    const pcdValue = getCandidateField(candidate, 'VAGAPCD', 'vaga_pcd', 'PCD', 'pcd');
+    
+    if (pcdValue === '1' || pcdValue === 'Sim' || pcdValue === 'true' || pcdValue === 'SIM' || 
+        pcdValue === 's' || pcdValue === 'S' || pcdValue === 'x' || pcdValue === 'X' ||
+        pcdValue.toLowerCase().includes('sim')) {
       return 'Sim';
     }
-    if (pcdValue === '0' || pcdValue === 'Não' || pcdValue === 'false' || pcdValue === 'NÃO' || pcdValue === 'NAO') {
+    
+    if (pcdValue === '0' || pcdValue === 'Não' || pcdValue === 'false' || pcdValue === 'NÃO' || 
+        pcdValue === 'NAO' || pcdValue === 'n' || pcdValue === 'N' ||
+        pcdValue.toLowerCase().includes('não') || pcdValue.toLowerCase().includes('nao')) {
       return 'Não';
     }
+    
     return pcdValue || 'Não';
   }
 
